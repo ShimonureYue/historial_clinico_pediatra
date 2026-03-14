@@ -4,8 +4,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Save, Stethoscope, Weight, Ruler, Thermometer,
   Wind, HeartPulse, Activity, Plus, Trash2, Pill, Calendar, User,
-  ClipboardPlus, FileText, Accessibility
+  ClipboardPlus, FileText, Accessibility, Printer
 } from 'lucide-react'
+import { jsPDF } from 'jspdf'
 import api from '../lib/api'
 import useModulePermission from '../hooks/useModulePermission'
 import toast from 'react-hot-toast'
@@ -213,6 +214,99 @@ export default function ConsultaDetallePage() {
     setEditing(false)
   }
 
+  const formatFechaReceta = (fecha) => {
+    if (!fecha) return '—'
+    const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+    const d = new Date(fecha + 'T00:00:00')
+    return `${d.getFullYear()} - ${meses[d.getMonth()]} - ${String(d.getDate()).padStart(2, '0')}`
+  }
+
+  const generateRecetaPDF = () => {
+    // Media carta horizontal: 215.9mm ancho x 139.7mm alto (hoja precortada)
+    const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: [215.9, 139.7] })
+    const ml = 10, mr = 10, mt = 40, mb = 10
+    const pw = 215.9, ph = 139.7
+    const cw = pw - ml - mr
+    let y = mt
+
+    // Row 1: Fecha | Nombre
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Fecha: ', ml, y)
+    doc.setFont('helvetica', 'normal')
+    doc.text(formatFechaReceta(form.fecha_consulta), ml + doc.getTextWidth('Fecha: '), y)
+    doc.setFont('helvetica', 'bold')
+    const pacLabel = 'Paciente: '
+    doc.text(pacLabel, pw / 2, y)
+    doc.setFont('helvetica', 'normal')
+    doc.text(consulta.paciente_nombre || '', pw / 2 + doc.getTextWidth(pacLabel), y)
+    y += 7
+
+    // Row 2: Signos vitales
+    doc.setFontSize(10)
+    const vitals = [
+      ['Peso:', form.peso_kg ? `${form.peso_kg} kg` : ''],
+      ['Talla:', form.talla_cm ? `${form.talla_cm} cm` : ''],
+      ['FC:', form.fc_bpm ? `${form.fc_bpm}/min` : ''],
+      ['FR:', form.fr_rpm ? `${form.fr_rpm}/min` : ''],
+      ['Temp:', form.temperatura_c ? `${form.temperatura_c} °C` : ''],
+      ['TA:', (form.ta_sistolica || form.ta_diastolica) ? `${form.ta_sistolica || ''}/${form.ta_diastolica || ''}` : ''],
+    ]
+    let vx = ml
+    for (const [label, val] of vitals) {
+      if (!val) continue
+      doc.setFont('helvetica', 'bold')
+      doc.text(label, vx, y)
+      vx += doc.getTextWidth(label) + 1
+      doc.setFont('helvetica', 'normal')
+      doc.text(val, vx, y)
+      vx += doc.getTextWidth(val) + 5
+    }
+    y += 7
+
+    // Medicamentos
+    const meds = tratamientos.filter((t) => t.nombre_medicamento?.trim())
+    if (meds.length > 0) {
+      // Header row
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'bold')
+      const cols = [ml, ml + 55, ml + 90, ml + 120, ml + 148, ml + 170]
+      const headers = ['Medicamento', 'Presentacion', 'Dosificacion', 'Duracion', 'Via', 'Cant.']
+      headers.forEach((h, i) => doc.text(h, cols[i], y))
+      y += 5
+
+      // Data rows
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      meds.forEach((t, idx) => {
+        if (y > ph - mb - 5) return
+        doc.text(`${idx + 1}. ${t.nombre_medicamento}`, cols[0], y)
+        doc.text(t.presentacion || '', cols[1], y)
+        doc.text(t.dosificacion || '', cols[2], y)
+        doc.text(t.duracion || '', cols[3], y)
+        doc.text(t.via_administracion || '', cols[4], y)
+        doc.text(t.cantidad_surtir || '', cols[5], y)
+        y += 5
+      })
+      y += 3
+    }
+
+    // Plan de tratamiento
+    if (form.plan_tratamiento) {
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Plan de tratamiento:', ml, y)
+      y += 5
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      const planLines = doc.splitTextToSize(form.plan_tratamiento, cw)
+      doc.text(planLines, ml, y)
+    }
+
+    doc.autoPrint()
+    window.open(doc.output('bloburl'), '_blank')
+  }
+
   const initials = consulta.paciente_nombre
     ? consulta.paciente_nombre.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()
     : '?'
@@ -267,6 +361,13 @@ export default function ConsultaDetallePage() {
             </button>
           </>
         )}
+        {!editing && (
+          <button type="button" onClick={generateRecetaPDF}
+            className="inline-flex items-center gap-1 px-3 py-1 text-[11px] font-medium text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+            title="Imprimir receta">
+            <Printer className="w-3.5 h-3.5" /> Receta
+          </button>
+        )}
         {canUpdate && !editing && (
           <button onClick={() => setEditing(true)}
             className="inline-flex items-center gap-1 px-3 py-1 bg-primary text-white text-[11px] font-medium rounded-lg hover:bg-primary-dark transition-all">
@@ -277,7 +378,7 @@ export default function ConsultaDetallePage() {
 
       {/* Two-column layout */}
       <form id="consulta-form" onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-3 items-start">
 
           {/* ── LEFT COLUMN ── */}
           <div className="space-y-3">
@@ -287,7 +388,7 @@ export default function ConsultaDetallePage() {
                 <ClipboardPlus className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                 <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">Datos de la consulta</h3>
               </div>
-              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 items-start">
+              <div className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1 items-start">
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Fecha</label>
                   <input type="date" value={form.fecha_consulta}
@@ -298,7 +399,7 @@ export default function ConsultaDetallePage() {
                   <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Motivo / Padecimiento actual</label>
                   <textarea value={form.padecimiento_actual}
                     onChange={(e) => updateField('padecimiento_actual', e.target.value)}
-                    rows={4} className={clsx(`${inputClass} resize-none`, disabled && 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400')}
+                    rows={6} className={clsx(`${inputClass} resize-none`, disabled && 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400')}
                     disabled={disabled} placeholder="Padecimiento actual..." />
                 </div>
               </div>
@@ -335,7 +436,7 @@ export default function ConsultaDetallePage() {
                   { key: 'miembros_pelvicos', label: 'M. Pélvicos' },
                   { key: 'otros', label: 'Otros' },
                 ].map(({ key, label }) => (
-                  <MiniField key={key} label={label} value={form[key]} rows={2}
+                  <MiniField key={key} label={label} value={form[key]} rows={3}
                     onChange={(v) => updateField(key, v)} disabled={disabled} />
                 ))}
               </div>
@@ -404,32 +505,42 @@ export default function ConsultaDetallePage() {
                 </div>
               ) : (
                 <div className="space-y-1">
+                  {/* Table header */}
+                  <div className="grid grid-cols-[1.4fr_1fr_1fr_0.7fr_0.7fr_0.7fr_auto] gap-1 px-2">
+                    <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase">Medicamento</span>
+                    <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase">Presentación</span>
+                    <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase">Dosificación</span>
+                    <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase">Duración</span>
+                    <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase">Vía</span>
+                    <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase">Cant.</span>
+                    <div className="w-4" />
+                  </div>
                   {tratamientos.map((t, idx) => (
                     <div key={idx} className="bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-700 px-2 py-1.5">
                       <div className="grid grid-cols-[1.4fr_1fr_1fr_0.7fr_0.7fr_0.7fr_auto] gap-1 items-center">
                         <input value={t.nombre_medicamento}
                           onChange={(e) => updateMed(idx, 'nombre_medicamento', e.target.value)}
-                          className={clsx(inputClass, 'text-[11px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
+                          className={clsx(inputClass, 'text-[10px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
                           disabled={disabled} placeholder="Medicamento" required />
                         <input value={t.presentacion || ''}
                           onChange={(e) => updateMed(idx, 'presentacion', e.target.value)}
-                          className={clsx(inputClass, 'text-[11px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
+                          className={clsx(inputClass, 'text-[10px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
                           disabled={disabled} placeholder="Tabletas 500mg" />
                         <input value={t.dosificacion || ''}
                           onChange={(e) => updateMed(idx, 'dosificacion', e.target.value)}
-                          className={clsx(inputClass, 'text-[11px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
+                          className={clsx(inputClass, 'text-[10px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
                           disabled={disabled} placeholder="1 c/8 hrs" />
                         <input value={t.duracion || ''}
                           onChange={(e) => updateMed(idx, 'duracion', e.target.value)}
-                          className={clsx(inputClass, 'text-[11px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
+                          className={clsx(inputClass, 'text-[10px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
                           disabled={disabled} placeholder="7 días" />
                         <input value={t.via_administracion || ''}
                           onChange={(e) => updateMed(idx, 'via_administracion', e.target.value)}
-                          className={clsx(inputClass, 'text-[11px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
+                          className={clsx(inputClass, 'text-[10px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
                           disabled={disabled} placeholder="Oral" />
                         <input value={t.cantidad_surtir || ''}
                           onChange={(e) => updateMed(idx, 'cantidad_surtir', e.target.value)}
-                          className={clsx(inputClass, 'text-[11px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
+                          className={clsx(inputClass, 'text-[10px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
                           disabled={disabled} placeholder="21 tab" />
                         {editing ? (
                           <button type="button" onClick={() => removeMed(idx)}
