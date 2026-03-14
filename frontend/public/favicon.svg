@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Red cross background -->
+  <rect x="22" y="4" width="20" height="56" rx="3" fill="#dc2626"/>
+  <rect x="4" y="22" width="56" height="20" rx="3" fill="#dc2626"/>
+  <!-- Doctor silhouette centered -->
+  <!-- Head -->
+  <circle cx="32" cy="20" r="6" fill="#1e293b"/>
+  <!-- Body/torso -->
+  <path d="M22 35 C22 28 26 26 32 26 C38 26 42 28 42 35 L42 48 C42 50 40 52 38 52 L26 52 C24 52 22 50 22 48 Z" fill="#1e293b"/>
+  <!-- Stethoscope -->
+  <path d="M26 30 C20 30 18 34 18 38" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="18" cy="40" r="2.5" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+  <circle cx="18" cy="40" r="1" fill="#94a3b8"/>
+  <!-- Head mirror / reflector -->
+  <circle cx="36" cy="17" r="2.5" fill="#e2e8f0" stroke="#94a3b8" stroke-width="0.5"/>
+  <circle cx="36" cy="17" r="1" fill="#f1f5f9"/>
+  <!-- Arms hint -->
+  <path d="M22 34 L18 38" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+  <path d="M42 34 L46 38" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+  <!-- White coat lapels -->
+  <path d="M28 26 L32 34 L36 26" fill="none" stroke="#e2e8f0" stroke-width="1.5"/>
+</svg>
