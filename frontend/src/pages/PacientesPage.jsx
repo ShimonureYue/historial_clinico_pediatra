@@ -90,10 +90,16 @@ export default function PacientesPage() {
       editing
         ? api.put(`/pacientes/${editing.id}`, data)
         : api.post('/pacientes', data),
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['pacientes'] })
-      toast.success(editing ? 'Paciente actualizado' : 'Paciente creado')
-      closeForm()
+      if (editing) {
+        toast.success('Paciente actualizado')
+        closeForm()
+      } else {
+        toast.success('Paciente creado')
+        closeForm()
+        navigate(`/pacientes/${res.data.id}`)
+      }
     },
     onError: (e) => toast.error(e.response?.data?.detail || 'Error al guardar'),
   })
@@ -280,7 +286,7 @@ export default function PacientesPage() {
                   <tr key={pac.id} className="group hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                     <td className="px-4 py-3 font-mono text-slate-400 dark:text-slate-500">{pac.id}</td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-slate-800 dark:text-slate-100">{pac.nombre} {pac.apellido_paterno} {pac.apellido_materno}</p>
+                      <p className="font-medium text-slate-800 dark:text-slate-100 cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/pacientes/${pac.id}`)}>{pac.nombre} {pac.apellido_paterno} {pac.apellido_materno}</p>
                       <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1 mt-0.5 md:hidden">
                         <Calendar className="w-3 h-3" /> {calcAgeText(pac.fecha_nacimiento)}
                       </p>

@@ -1,13 +1,14 @@
 import { NavLink } from 'react-router-dom'
 import {
   Users, Stethoscope, FileText, ShieldCheck,
-  ClipboardList, HeartPulse, Baby, ChevronLeft, ChevronRight
+  ClipboardList, HeartPulse, Baby, ChevronLeft, ChevronRight, LayoutDashboard
 } from 'lucide-react'
 import { useState } from 'react'
 import useAuthStore from '../../store/auth'
 import clsx from 'clsx'
 
 const navItems = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, module: null },
   { to: '/pacientes', label: 'Pacientes', icon: Baby, module: 'pacientes' },
   { to: '/consultas', label: 'Consultas', icon: Stethoscope, module: 'consultas' },
   { to: '/antecedentes-patologicos', label: 'A. Patológicos', icon: ClipboardList, module: 'antecedentes_pp' },
@@ -17,10 +18,11 @@ const navItems = [
 ]
 
 export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === 'true')
   const permissions = useAuthStore((s) => s.permissions)
 
   const visibleItems = navItems.filter((item) => {
+    if (!item.module) return true
     const perm = permissions?.[item.module]
     return perm?.lectura
   })
@@ -44,7 +46,7 @@ export default function Sidebar() {
           </div>
         )}
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={() => { const next = !collapsed; setCollapsed(next); localStorage.setItem('sidebar_collapsed', next) }}
           className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
         >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}

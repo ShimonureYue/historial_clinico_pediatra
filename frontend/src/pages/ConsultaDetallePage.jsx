@@ -4,13 +4,100 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Save, Stethoscope, Weight, Ruler, Thermometer,
   Wind, HeartPulse, Activity, Plus, Trash2, Pill, Calendar, User,
-  ClipboardPlus, FileText, Accessibility, Printer
+  ClipboardPlus, FileText, Accessibility, Printer, NotebookPen,
+  Bold, Italic, List, ListOrdered,
 } from 'lucide-react'
 import { jsPDF } from 'jspdf'
+import { useEditor, EditorContent } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
 import api from '../lib/api'
 import useModulePermission from '../hooks/useModulePermission'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
+
+/* ─── Rich Text Editor ─── */
+function RichTextEditor({ value, onChange, disabled }) {
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: value || '',
+    editable: !disabled,
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+  })
+
+  // Sync editable state when disabled changes
+  useEffect(() => {
+    if (editor) editor.setEditable(!disabled)
+  }, [editor, disabled])
+
+  // Sync content when value changes externally (e.g. cancel)
+  useEffect(() => {
+    if (editor && value !== editor.getHTML()) {
+      editor.commands.setContent(value || '')
+    }
+  }, [value]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!editor) return null
+
+  return (
+    <div className={clsx(
+      'rounded-lg border text-xs transition-colors',
+      disabled
+        ? 'border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800'
+        : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary'
+    )}>
+      {!disabled && (
+        <div className="flex items-center gap-0.5 px-2 py-1 border-b border-slate-100 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 rounded-t-lg">
+          {[
+            { action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive('bold'), Icon: Bold, title: 'Negrita' },
+            { action: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive('italic'), Icon: Italic, title: 'Cursiva' },
+            { action: () => editor.chain().focus().toggleBulletList().run(), active: editor.isActive('bulletList'), Icon: List, title: 'Lista' },
+            { action: () => editor.chain().focus().toggleOrderedList().run(), active: editor.isActive('orderedList'), Icon: ListOrdered, title: 'Lista numerada' },
+          ].map(({ action, active, Icon, title }) => (
+            <button key={title} type="button" onClick={action} title={title}
+              className={clsx('p-1 rounded transition-colors', active
+                ? 'bg-primary text-white'
+                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600')}>
+              <Icon className="w-3 h-3" />
+            </button>
+          ))}
+        </div>
+      )}
+      <EditorContent
+        editor={editor}
+        className={clsx(
+          'px-2 py-1.5 min-h-[80px]',
+          // Match textarea font/color style
+          'text-xs text-slate-800 dark:text-slate-100',
+          disabled && 'text-slate-500 dark:text-slate-400',
+          // ProseMirror reset
+          '[&_.ProseMirror]:outline-none',
+          '[&_.ProseMirror]:text-xs [&_.ProseMirror]:leading-relaxed',
+          '[&_.ProseMirror_p]:m-0 [&_.ProseMirror_p+p]:mt-1',
+          '[&_.ProseMirror_ul]:my-0.5 [&_.ProseMirror_ul]:pl-4 [&_.ProseMirror_ul]:list-disc',
+          '[&_.ProseMirror_ol]:my-0.5 [&_.ProseMirror_ol]:pl-4 [&_.ProseMirror_ol]:list-decimal',
+          '[&_.ProseMirror_li]:my-0 [&_.ProseMirror_li]:leading-relaxed [&_.ProseMirror_li]:list-item',
+          '[&_.ProseMirror_strong]:font-semibold',
+          '[&_.ProseMirror_em]:italic',
+        )}
+      />
+    </div>
+  )
+}
+
+/* ─── HTML to plain text lines (for PDF) ─── */
+function htmlToLines(html) {
+  if (!html) return []
+  // Convert list items to bullet lines first
+  const text = html
+    .replace(/<li[^>]*>/gi, '\x00• ')   // mark list item start
+    .replace(/<\/li>/gi, '\x00')         // mark list item end
+    .replace(/<br\s*\/?>/gi, '\x00')
+    .replace(/<\/p>/gi, '\x00').replace(/<p[^>]*>/gi, '')
+    .replace(/<\/?(strong|b|em|i|ul|ol)[^>]*>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
+  return text.split('\x00').map((l) => l.trim()).filter(Boolean)
+}
 
 const inputClass = "w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600"
 
@@ -218,7 +305,7 @@ export default function ConsultaDetallePage() {
     if (!fecha) return '—'
     const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
     const d = new Date(fecha + 'T00:00:00')
-    return `${d.getFullYear()} - ${meses[d.getMonth()]} - ${String(d.getDate()).padStart(2, '0')}`
+    return `${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`
   }
 
   const generateRecetaPDF = () => {
@@ -301,6 +388,21 @@ export default function ConsultaDetallePage() {
       doc.setFontSize(10)
       const planLines = doc.splitTextToSize(form.plan_tratamiento, cw)
       doc.text(planLines, ml, y)
+      y += planLines.length * 5 + 3
+    }
+
+    // Indicaciones / comentarios (rich text → líneas planas)
+    const notasLines = htmlToLines(form.notas_adicionales)
+    if (notasLines.length > 0) {
+      if (y > ph - mb - 10) { doc.addPage(); y = mt }
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      for (const line of notasLines) {
+        if (y > ph - mb - 4) break
+        const wrapped = doc.splitTextToSize(line, cw)
+        doc.text(wrapped, ml, y)
+        y += wrapped.length * 4.5
+      }
     }
 
     doc.autoPrint()
@@ -466,13 +568,6 @@ export default function ConsultaDetallePage() {
                     rows={5} className={clsx(`${inputClass} resize-none`, disabled && 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400')}
                     disabled={disabled} placeholder="Indicaciones, estudios, referidos..." />
                 </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Notas adicionales</label>
-                  <textarea value={form.notas_adicionales}
-                    onChange={(e) => updateField('notas_adicionales', e.target.value)}
-                    rows={2} className={clsx(`${inputClass} resize-none`, disabled && 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400')}
-                    disabled={disabled} placeholder="Observaciones, seguimiento..." />
-                </div>
               </div>
             </div>
 
@@ -554,6 +649,20 @@ export default function ConsultaDetallePage() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Indicaciones / Comentarios para receta */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <NotebookPen className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">Indicaciones y comentarios</h3>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-1">— aparecen en la receta</span>
+              </div>
+              <RichTextEditor
+                value={form.notas_adicionales}
+                onChange={(v) => updateField('notas_adicionales', v)}
+                disabled={disabled}
+              />
             </div>
           </div>
 

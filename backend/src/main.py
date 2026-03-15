@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 
 from .routers import auth_router, pacientes_router, consultas_router
 from .routers import antecedentes_pp_router, antecedentes_pnp_router, antecedentes_hf_router
-from .routers import usuarios_router, tratamientos_router
+from .routers import usuarios_router, tratamientos_router, dashboard_router
 
 app = FastAPI(
     title="Historia Clínica Pediátrica API",
@@ -17,7 +17,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,6 +31,7 @@ app.include_router(antecedentes_pnp_router.router, prefix="/api/antecedentes-no-
 app.include_router(antecedentes_hf_router.router, prefix="/api/antecedentes-heredo-familiares", tags=["Antecedentes Heredo Familiares"])
 app.include_router(usuarios_router.router, prefix="/api/usuarios", tags=["Usuarios"])
 app.include_router(tratamientos_router.router, prefix="/api/tratamientos", tags=["Tratamientos"])
+app.include_router(dashboard_router.router, prefix="/api/dashboard", tags=["Dashboard"])
 
 
 @app.get("/api/health")

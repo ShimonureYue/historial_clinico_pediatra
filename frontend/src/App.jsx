@@ -10,6 +10,7 @@ import AntecedentesHeredoFamiliaresPage from './pages/AntecedentesHeredoFamiliar
 import UsuariosPage from './pages/UsuariosPage'
 import PacienteDetallePage from './pages/PacienteDetallePage'
 import ConsultaDetallePage from './pages/ConsultaDetallePage'
+import DashboardPage from './pages/DashboardPage'
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
           </ProtectedRoute>
         }
       >
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/pacientes" element={<PacientesPage />} />
         <Route path="/pacientes/:id" element={<PacienteDetallePage />} />
         <Route path="/consultas" element={<ConsultasPage />} />
@@ -33,7 +35,7 @@ export default function App() {
         <Route path="/usuarios" element={<UsuariosPage />} />
       </Route>
 
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   )
