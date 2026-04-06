@@ -144,6 +144,16 @@ CREATE TABLE IF NOT EXISTS antecedentes_personales_no_patologicos (
     respiro_al_nacer        INTEGER DEFAULT NULL,
     lloro_al_nacer          INTEGER DEFAULT NULL,
     desarrollo_psicomotor   TEXT    NULL,
+    sonrisa_social          TEXT    NULL,
+    levantamiento_cabeza    TEXT    NULL,
+    sento_solo              TEXT    NULL,
+    paro_ayuda              TEXT    NULL,
+    gateo                   TEXT    NULL,
+    camino                  TEXT    NULL,
+    inicio_lenguaje         TEXT    NULL,
+    control_esfinteres      TEXT    NULL,
+    inicio_jardin_ninos     TEXT    NULL,
+    primaria                TEXT    NULL,
     updated_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

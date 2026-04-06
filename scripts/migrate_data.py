@@ -226,6 +226,7 @@ def migrate_from_access(access_path: str, db_path: str) -> None:
         ("Ante_Perso_NoPatologicos", migrate_antecedentes_no_patologicos),
         ("Ante_Heredo_Familiares", migrate_antecedentes_heredo_familiares),
         ("Inmunizaciones_X_Paciente", migrate_inmunizaciones),
+        ("Desarrollo_Psicomotor", migrate_desarrollo_psicomotor),
     ]
 
     migrated_count = {}
@@ -258,7 +259,7 @@ def migrate_from_access(access_path: str, db_path: str) -> None:
 
 
 def create_default_users(cursor) -> None:
-    """Create admin and doctor users with permissions (Access has no users table)."""
+    """Create only the admin user (Access has no users table). Doctor/staff created manually."""
     pw_admin = hashlib.sha256("admin123".encode()).hexdigest()
     cursor.execute(
         """INSERT OR IGNORE INTO usuarios (nombre, correo, rol, password_hash, activo)
@@ -266,14 +267,6 @@ def create_default_users(cursor) -> None:
         ("Administrador", "admin@clinica.com", "admin", pw_admin, 1),
     )
     admin_id = cursor.lastrowid or 1
-
-    pw_doc = hashlib.sha256("doctor123".encode()).hexdigest()
-    cursor.execute(
-        """INSERT OR IGNORE INTO usuarios (nombre, correo, rol, password_hash, activo)
-           VALUES (?, ?, ?, ?, ?)""",
-        ("Dr. Roberto García", "doctor@clinica.com", "medico", pw_doc, 1),
-    )
-    doctor_id = cursor.lastrowid or 2
 
     cursor.execute("SELECT id FROM permisos")
     for (pid,) in cursor.fetchall():
@@ -284,15 +277,7 @@ def create_default_users(cursor) -> None:
             (admin_id, pid),
         )
 
-    for pid in [1, 2, 3, 4, 5, 7]:
-        cursor.execute(
-            """INSERT OR IGNORE INTO usuario_permisos
-               (usuario_id, permiso_id, lectura, escritura, actualizacion, eliminacion)
-               VALUES (?, ?, 1, 1, 1, 0)""",
-            (doctor_id, pid),
-        )
-
-    print(f"  Usuarios creados: admin (id={admin_id}), doctor (id={doctor_id})")
+    print(f"  Usuario admin creado: admin@clinica.com / admin123 (id={admin_id})")
 
 
 def migrate_pacientes(cursor, rows: list[dict]) -> tuple[int, int]:
@@ -600,6 +585,51 @@ def migrate_inmunizaciones(cursor, rows: list[dict]) -> tuple[int, int]:
             (np_id, vacuna_clean, dosis, None, None, None),
         )
         count += 1
+    return count, skipped
+
+
+def migrate_desarrollo_psicomotor(cursor, rows: list[dict]) -> tuple[int, int]:
+    """Migrate developmental milestones from Access 'Desarrollo_Psicomotor'.
+
+    Access columns: Id_Desarrollo_Psicomotor, ID_Paciente,
+    Sonrisa_Social, Levantamiento_Cabeza, Sento_Solo, Paro_Ayuda,
+    Gateo, Camino, Inicio_Lenguaje, Control_Esfinteres,
+    Inicio_JardinNinos, Primaria
+
+    Updates antecedentes_personales_no_patologicos by paciente_id.
+    """
+    count = 0
+    skipped = 0
+    for row in rows:
+        pac_id = safe_int(row.get("ID_Paciente", ""))
+        if not pac_id:
+            skipped += 1
+            continue
+
+        cursor.execute(
+            """UPDATE antecedentes_personales_no_patologicos
+               SET sonrisa_social=?, levantamiento_cabeza=?, sento_solo=?, paro_ayuda=?,
+                   gateo=?, camino=?, inicio_lenguaje=?, control_esfinteres=?,
+                   inicio_jardin_ninos=?, primaria=?
+               WHERE paciente_id=?""",
+            (
+                safe_text(row.get("Sonrisa_Social", "")),
+                safe_text(row.get("Levantamiento_Cabeza", "")),
+                safe_text(row.get("Sento_Solo", "")),
+                safe_text(row.get("Paro_Ayuda", "")),
+                safe_text(row.get("Gateo", "")),
+                safe_text(row.get("Camino", "")),
+                safe_text(row.get("Inicio_Lenguaje", "")),
+                safe_text(row.get("Control_Esfinteres", "")),
+                safe_text(row.get("Inicio_JardinNinos", "")),
+                safe_text(row.get("Primaria", "")),
+                pac_id,
+            ),
+        )
+        if cursor.rowcount > 0:
+            count += 1
+        else:
+            skipped += 1
     return count, skipped
 
 

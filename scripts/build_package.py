@@ -2,12 +2,14 @@
 build_package.py
 ================
 Empaqueta el proyecto (frontend compilado + backend + base de datos SQLite)
-en una carpeta 'build/HistorialPediatrico/' lista para copiar a Windows 10.
+en una carpeta 'build/HistorialPediatrico/' lista para copiar a Windows 10/11.
+
+Requiere Python 3.14+ en el equipo Windows destino.
 
 FLUJO:
     1. En macOS: migrar Access -> SQLite (migrate_structure.py + migrate_data.py)
     2. En macOS: ejecutar este script para empaquetar todo
-    3. Copiar build/HistorialPediatrico/ a la PC con Windows 10
+    3. Copiar build/HistorialPediatrico/ a la PC con Windows 10/11
     4. En Windows: setup.bat -> run.bat
 
 Requisitos (macOS):
@@ -121,7 +123,7 @@ echo.
 python --version >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Python no esta instalado.
-    echo Descarga Python 3.10+ desde https://www.python.org/downloads/
+    echo Descarga Python 3.14 desde https://www.python.org/downloads/
     echo IMPORTANTE: Marca "Add Python to PATH" durante la instalacion.
     pause
     exit /b 1
@@ -167,6 +169,9 @@ echo  Historia Clinica Pediatrica
 echo ============================================
 echo.
 
+:: Port (editable — cambiar aqui si el 8000 esta ocupado)
+if "%PORT%"=="" set PORT=8000
+
 :: Check venv exists
 if not exist ".venv\Scripts\activate.bat" (
     echo ERROR: No se encontro el entorno virtual.
@@ -190,21 +195,21 @@ echo Iniciando servidor...
 echo.
 echo ========================================
 echo  Abre tu navegador en:
-echo  http://localhost:8000
+echo  http://localhost:%PORT%
 echo ========================================
 echo.
 echo Presiona Ctrl+C para detener el servidor.
 echo.
 
-start "" "http://localhost:8000"
-python -m uvicorn backend.src.main:app --host 127.0.0.1 --port 8000
+start "" "http://localhost:%PORT%"
+python -m uvicorn backend.src.main:app --host 127.0.0.1 --port %PORT%
 pause
 """
 
     # ── README.txt ──
     readme_txt = r"""============================================================
   HISTORIA CLINICA PEDIATRICA
-  Guia de Instalacion y Uso - Windows 10
+  Guia de Instalacion y Uso - Windows 10/11
 ============================================================
 
 Este programa funciona en tu navegador (Chrome, Edge, Firefox).
@@ -223,9 +228,9 @@ adicional). Solo Python.
      https://www.python.org/downloads/
 
   2. Haz clic en el boton amarillo grande que dice
-     "Download Python 3.1x.x" (el numero puede variar).
+     "Download Python 3.14.x" (el ultimo numero puede variar).
 
-  3. Se descargara un archivo como "python-3.12.x-amd64.exe".
+  3. Se descargara un archivo como "python-3.14.x-amd64.exe".
      Buscalo en tu carpeta de Descargas y haz DOBLE CLIC
      para abrirlo.
 
@@ -244,8 +249,7 @@ adicional). Solo Python.
 
   7. Listo! Python quedo instalado.
 
-  NOTA: Si ya tienes Python 3.10 o superior instalado,
-  puedes saltarte este paso.
+  NOTA: Se requiere Python 3.14 o superior.
 
 
 ============================================================
@@ -292,10 +296,8 @@ adicional). Solo Python.
      Correo:     admin@clinica.com
      Contrasena: admin123
 
-     (o bien)
-
-     Correo:     doctor@clinica.com
-     Contrasena: doctor123
+     IMPORTANTE: Cambia la contrasena y crea los demas
+     usuarios desde el modulo de Usuarios.
 
   5. Ya puedes usar el sistema!
 
@@ -363,6 +365,41 @@ adicional). Solo Python.
   "Windows Defender bloquea el programa"
   → Es normal. Haz clic en "Mas informacion" y luego en
     "Ejecutar de todas formas". El programa es seguro.
+
+
+============================================================
+  COMO ACTUALIZAR EL PROGRAMA SIN PERDER LOS DATOS
+============================================================
+
+  Cuando recibes una version nueva del programa y ya tienes
+  datos de pacientes en la base de datos actual, NO copies
+  la carpeta completa encima porque sobreescribirias la BD.
+
+  Sigue estos pasos para actualizar sin perder nada:
+
+  1. Asegurate de que el programa NO este corriendo
+     (cierra la ventana negra si esta abierta).
+
+  2. Haz un RESPALDO de tu base de datos ANTES de cualquier
+     cambio. Copia este archivo a un lugar seguro:
+
+       database\historial_pediatrico.db
+
+  3. De la carpeta nueva que te enviaron, copia UNICAMENTE
+     estas carpetas/archivos encima de los existentes:
+
+       backend\          (reemplaza la carpeta completa)
+       static\           (reemplaza la carpeta completa)
+       requirements.txt  (reemplaza el archivo)
+
+     NO copies ni toques la carpeta "database\".
+
+  4. Abre run.bat para iniciar el sistema actualizado.
+     Tu base de datos con todos los datos sigue intacta.
+
+  RESUMEN: En una actualizacion solo se reemplazan
+  backend\ + static\ + requirements.txt
+  La carpeta database\ NUNCA se toca.
 
 
 ============================================================

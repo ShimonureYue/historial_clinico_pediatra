@@ -68,3 +68,5 @@ secrets.json
 # ── Misc ──────────────────────────────────────────────────────────────────────
 *.log
 initial_instructions.txt
+
+pr/

@@ -101,6 +101,16 @@ function htmlToLines(html) {
 
 const inputClass = "w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600"
 
+const DEFAULT_EXPLORACION = {
+  cabeza: 'Craneo normocefalo sin endostosis ni exostosis palpables, mucosas orales bien hidratadas',
+  cuello: 'Cilindrico con traquea central sin alteraciones',
+  torax: 'Area cardiaca ruidos cardiacos de adecuada intensidad y frecuencia campos pulmonares sin alteraciones',
+  abdomen: 'Blando depresible con peristalsis presente y normal de frecuencia no se palpan visceromegalias',
+  miembros_toracicos: 'Integros sin alteraciones, llenado capilar inmediato',
+  miembros_pelvicos: 'Integros sin alteraciones, llenado capilar inmediato',
+  otros: '',
+}
+
 const EMPTY_MED = {
   nombre_medicamento: '', presentacion: '', dosificacion: '',
   duracion: '', via_administracion: '', cantidad_surtir: '',
@@ -109,7 +119,7 @@ const EMPTY_MED = {
 function MiniField({ label, value, onChange, type = 'text', step, disabled, rows }) {
   return (
     <div>
-      <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">{label}</label>
+      <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">{label}</label>
       {rows ? (
         <textarea value={value ?? ''} rows={rows}
           onChange={(e) => onChange(e.target.value)}
@@ -149,6 +159,7 @@ export default function ConsultaDetallePage() {
 
   useEffect(() => {
     if (consulta) {
+      const isNew = !consulta.mediciones?.cabeza && !consulta.mediciones?.peso_kg && !consulta.impresion_diagnostica
       setForm({
         fecha_consulta: consulta.fecha_consulta || '',
         padecimiento_actual: consulta.padecimiento_actual || '',
@@ -162,19 +173,16 @@ export default function ConsultaDetallePage() {
         temperatura_c: consulta.mediciones?.temperatura_c ?? '',
         ta_sistolica: consulta.mediciones?.ta_sistolica ?? '',
         ta_diastolica: consulta.mediciones?.ta_diastolica ?? '',
-        cabeza: consulta.mediciones?.cabeza ?? '',
-        cuello: consulta.mediciones?.cuello ?? '',
-        torax: consulta.mediciones?.torax ?? '',
-        abdomen: consulta.mediciones?.abdomen ?? '',
-        miembros_toracicos: consulta.mediciones?.miembros_toracicos ?? '',
-        miembros_pelvicos: consulta.mediciones?.miembros_pelvicos ?? '',
+        cabeza: consulta.mediciones?.cabeza ?? (isNew ? DEFAULT_EXPLORACION.cabeza : ''),
+        cuello: consulta.mediciones?.cuello ?? (isNew ? DEFAULT_EXPLORACION.cuello : ''),
+        torax: consulta.mediciones?.torax ?? (isNew ? DEFAULT_EXPLORACION.torax : ''),
+        abdomen: consulta.mediciones?.abdomen ?? (isNew ? DEFAULT_EXPLORACION.abdomen : ''),
+        miembros_toracicos: consulta.mediciones?.miembros_toracicos ?? (isNew ? DEFAULT_EXPLORACION.miembros_toracicos : ''),
+        miembros_pelvicos: consulta.mediciones?.miembros_pelvicos ?? (isNew ? DEFAULT_EXPLORACION.miembros_pelvicos : ''),
         otros: consulta.mediciones?.otros ?? '',
       })
       setTratamientos(consulta.tratamientos?.map((t) => ({ ...t })) || [])
-      // Auto-enable editing if consulta was just created (no mediciones yet)
-      if (!consulta.mediciones?.peso_kg && !consulta.mediciones?.cabeza && !consulta.impresion_diagnostica) {
-        setEditing(true)
-      }
+      if (isNew) setEditing(true)
     }
   }, [consulta])
 
@@ -316,8 +324,11 @@ export default function ConsultaDetallePage() {
     const cw = pw - ml - mr
     let y = mt
 
+    const newPage = () => { doc.addPage(); y = mt }
+    const checkPage = (needed) => { if (y + needed > ph - mb) newPage() }
+
     // Row 1: Fecha | Nombre
-    doc.setFontSize(12)
+    doc.setFontSize(10)
     doc.setFont('helvetica', 'bold')
     doc.text('Fecha: ', ml, y)
     doc.setFont('helvetica', 'normal')
@@ -354,54 +365,73 @@ export default function ConsultaDetallePage() {
     // Medicamentos
     const meds = tratamientos.filter((t) => t.nombre_medicamento?.trim())
     if (meds.length > 0) {
-      // Header row
-      doc.setFontSize(9)
-      doc.setFont('helvetica', 'bold')
-      const cols = [ml, ml + 55, ml + 90, ml + 120, ml + 148, ml + 170]
-      const headers = ['Medicamento', 'Presentacion', 'Dosificacion', 'Duracion', 'Via', 'Cant.']
-      headers.forEach((h, i) => doc.text(h, cols[i], y))
-      y += 5
+      checkPage(10)
+      doc.setFontSize(10)
 
-      // Data rows
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(10)
+      const lineH = 5
+      const indent = ml + 5
       meds.forEach((t, idx) => {
-        if (y > ph - mb - 5) return
-        doc.text(`${idx + 1}. ${t.nombre_medicamento}`, cols[0], y)
-        doc.text(t.presentacion || '', cols[1], y)
-        doc.text(t.dosificacion || '', cols[2], y)
-        doc.text(t.duracion || '', cols[3], y)
-        doc.text(t.via_administracion || '', cols[4], y)
-        doc.text(t.cantidad_surtir || '', cols[5], y)
-        y += 5
+        // Línea 1: "N. Nombre - Presentacion"
+        const nombrePres = [
+          `${idx + 1}. ${t.nombre_medicamento}`,
+          t.presentacion ? `- ${t.presentacion}` : '',
+        ].filter(Boolean).join('  ')
+        const line1 = doc.splitTextToSize(nombrePres, cw)
+        // Línea 2: "  Dosis  Duración  Vía  Cant."
+        const detalles = [
+          t.dosificacion,
+          t.duracion,
+          t.via_administracion,
+          t.cantidad_surtir,
+        ].filter(Boolean).join('   ')
+        const line2 = detalles ? doc.splitTextToSize(detalles, cw - 5) : []
+        checkPage((line1.length + line2.length) * lineH + 3)
+        doc.setFont('helvetica', 'bold')
+        line1.forEach((l, i) => doc.text(l, ml, y + i * lineH))
+        y += line1.length * lineH
+        if (line2.length) {
+          doc.setFont('helvetica', 'normal')
+          line2.forEach((l, i) => doc.text(l, indent, y + i * lineH))
+          y += line2.length * lineH
+        }
+        y += 2
       })
       y += 3
     }
 
     // Plan de tratamiento
     if (form.plan_tratamiento) {
-      doc.setFontSize(11)
+      checkPage(10)
+      doc.setFontSize(10)
       doc.setFont('helvetica', 'bold')
       doc.text('Plan de tratamiento:', ml, y)
       y += 5
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(10)
       const planLines = doc.splitTextToSize(form.plan_tratamiento, cw)
-      doc.text(planLines, ml, y)
-      y += planLines.length * 5 + 3
+      for (const line of planLines) {
+        checkPage(5)
+        doc.text(line, ml, y)
+        y += 5
+      }
+      y += 3
     }
 
     // Indicaciones / comentarios (rich text → líneas planas)
     const notasLines = htmlToLines(form.notas_adicionales)
     if (notasLines.length > 0) {
-      if (y > ph - mb - 10) { doc.addPage(); y = mt }
+      checkPage(10)
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(10)
       for (const line of notasLines) {
-        if (y > ph - mb - 4) break
         const wrapped = doc.splitTextToSize(line, cw)
-        doc.text(wrapped, ml, y)
-        y += wrapped.length * 4.5
+        for (const wline of wrapped) {
+          checkPage(4.5)
+          doc.text(wline, ml, y)
+          y += 4.5
+        }
       }
     }
 
@@ -425,7 +455,7 @@ export default function ConsultaDetallePage() {
 
         <button onClick={() => navigate(`/pacientes/${consulta.paciente_id}`)}
           className="flex items-center gap-1.5 hover:text-primary transition-colors">
-          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] font-bold shrink-0">
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-[12px] font-bold shrink-0">
             {initials}
           </span>
           <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{consulta.paciente_nombre}</span>
@@ -492,13 +522,13 @@ export default function ConsultaDetallePage() {
               </div>
               <div className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1 items-start">
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Fecha</label>
+                  <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Fecha</label>
                   <input type="date" value={form.fecha_consulta}
                     onChange={(e) => updateField('fecha_consulta', e.target.value)}
                     className={clsx(inputClass, disabled && 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400')} disabled={disabled} required />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Motivo / Padecimiento actual</label>
+                  <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Motivo / Padecimiento actual</label>
                   <textarea value={form.padecimiento_actual}
                     onChange={(e) => updateField('padecimiento_actual', e.target.value)}
                     rows={6} className={clsx(`${inputClass} resize-none`, disabled && 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400')}
@@ -513,7 +543,7 @@ export default function ConsultaDetallePage() {
                 <HeartPulse className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                 <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">Signos vitales</h3>
               </div>
-              <div className="grid grid-cols-4 lg:grid-cols-7 gap-1.5">
+              <div className="grid grid-cols-4 gap-1.5">
                 <MiniField label="Peso (kg)" type="number" step="0.1" value={form.peso_kg} onChange={(v) => updateField('peso_kg', v)} disabled={disabled} />
                 <MiniField label="Talla (cm)" type="number" step="0.1" value={form.talla_cm} onChange={(v) => updateField('talla_cm', v)} disabled={disabled} />
                 <MiniField label="FC (x min)" type="number" value={form.fc_bpm} onChange={(v) => updateField('fc_bpm', v)} disabled={disabled} />
@@ -538,7 +568,7 @@ export default function ConsultaDetallePage() {
                   { key: 'miembros_pelvicos', label: 'M. Pélvicos' },
                   { key: 'otros', label: 'Otros' },
                 ].map(({ key, label }) => (
-                  <MiniField key={key} label={label} value={form[key]} rows={3}
+                  <MiniField key={key} label={label} value={form[key]} rows={7}
                     onChange={(v) => updateField(key, v)} disabled={disabled} />
                 ))}
               </div>
@@ -555,18 +585,11 @@ export default function ConsultaDetallePage() {
               </div>
               <div className="space-y-2">
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Impresión diagnóstica</label>
+                  <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Impresión diagnóstica</label>
                   <textarea value={form.impresion_diagnostica}
                     onChange={(e) => updateField('impresion_diagnostica', e.target.value)}
                     rows={2} className={clsx(`${inputClass} resize-none`, disabled && 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400')}
                     disabled={disabled} placeholder="CIE-10 o descripción clínica..." />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Plan de tratamiento</label>
-                  <textarea value={form.plan_tratamiento}
-                    onChange={(e) => updateField('plan_tratamiento', e.target.value)}
-                    rows={5} className={clsx(`${inputClass} resize-none`, disabled && 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400')}
-                    disabled={disabled} placeholder="Indicaciones, estudios, referidos..." />
                 </div>
               </div>
             </div>
@@ -577,7 +600,7 @@ export default function ConsultaDetallePage() {
                 <div className="flex items-center gap-2">
                   <Pill className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                   <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">Medicamentos</h3>
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded-full">{tratamientos.length}</span>
+                  <span className="text-[12px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded-full">{tratamientos.length}</span>
                 </div>
                 {editing && (
                   <button type="button" onClick={addMed}
@@ -600,50 +623,58 @@ export default function ConsultaDetallePage() {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {/* Table header */}
-                  <div className="grid grid-cols-[1.4fr_1fr_1fr_0.7fr_0.7fr_0.7fr_auto] gap-1 px-2">
-                    <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase">Medicamento</span>
-                    <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase">Presentación</span>
-                    <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase">Dosificación</span>
-                    <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase">Duración</span>
-                    <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase">Vía</span>
-                    <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase">Cant.</span>
-                    <div className="w-4" />
-                  </div>
                   {tratamientos.map((t, idx) => (
-                    <div key={idx} className="bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-700 px-2 py-1.5">
-                      <div className="grid grid-cols-[1.4fr_1fr_1fr_0.7fr_0.7fr_0.7fr_auto] gap-1 items-center">
+                    <div key={idx} className="bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-700 px-2 py-1.5 space-y-1">
+                      {/* Fila 1: Nombre - Presentación */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0">{idx + 1}.</span>
                         <input value={t.nombre_medicamento}
                           onChange={(e) => updateMed(idx, 'nombre_medicamento', e.target.value)}
-                          className={clsx(inputClass, 'text-[10px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
-                          disabled={disabled} placeholder="Medicamento" required />
+                          className={clsx(inputClass, 'text-[12px] py-1 font-semibold flex-[1_1_0%] min-w-0', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
+                          disabled={disabled} placeholder="Nombre del medicamento" required />
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">—</span>
                         <input value={t.presentacion || ''}
                           onChange={(e) => updateMed(idx, 'presentacion', e.target.value)}
-                          className={clsx(inputClass, 'text-[10px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
-                          disabled={disabled} placeholder="Tabletas 500mg" />
-                        <input value={t.dosificacion || ''}
-                          onChange={(e) => updateMed(idx, 'dosificacion', e.target.value)}
-                          className={clsx(inputClass, 'text-[10px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
-                          disabled={disabled} placeholder="1 c/8 hrs" />
-                        <input value={t.duracion || ''}
-                          onChange={(e) => updateMed(idx, 'duracion', e.target.value)}
-                          className={clsx(inputClass, 'text-[10px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
-                          disabled={disabled} placeholder="7 días" />
-                        <input value={t.via_administracion || ''}
-                          onChange={(e) => updateMed(idx, 'via_administracion', e.target.value)}
-                          className={clsx(inputClass, 'text-[10px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
-                          disabled={disabled} placeholder="Oral" />
-                        <input value={t.cantidad_surtir || ''}
-                          onChange={(e) => updateMed(idx, 'cantidad_surtir', e.target.value)}
-                          className={clsx(inputClass, 'text-[10px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
-                          disabled={disabled} placeholder="21 tab" />
+                          className={clsx(inputClass, 'text-[12px] py-1 flex-[1_1_0%] min-w-0', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
+                          disabled={disabled} placeholder="Presentación" />
                         {editing ? (
                           <button type="button" onClick={() => removeMed(idx)}
-                            className="p-0.5 rounded text-slate-300 dark:text-slate-500 hover:text-red-500 transition-colors"
+                            className="p-0.5 rounded text-slate-300 dark:text-slate-500 hover:text-red-500 transition-colors shrink-0"
                             title="Eliminar">
                             <Trash2 className="w-3 h-3" />
                           </button>
-                        ) : <div className="w-4" />}
+                        ) : <div className="w-4 shrink-0" />}
+                      </div>
+                      {/* Fila 2: Dosis  Duración  Vía  Cant. */}
+                      <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-1 pl-5">
+                        <div>
+                          <label className="block text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Dosis</label>
+                          <input value={t.dosificacion || ''}
+                            onChange={(e) => updateMed(idx, 'dosificacion', e.target.value)}
+                            className={clsx(inputClass, 'text-[12px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
+                            disabled={disabled} placeholder="1 c/8 hrs" />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Duración</label>
+                          <input value={t.duracion || ''}
+                            onChange={(e) => updateMed(idx, 'duracion', e.target.value)}
+                            className={clsx(inputClass, 'text-[12px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
+                            disabled={disabled} placeholder="7 días" />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Vía</label>
+                          <input value={t.via_administracion || ''}
+                            onChange={(e) => updateMed(idx, 'via_administracion', e.target.value)}
+                            className={clsx(inputClass, 'text-[12px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
+                            disabled={disabled} placeholder="Oral" />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Cant.</label>
+                          <input value={t.cantidad_surtir || ''}
+                            onChange={(e) => updateMed(idx, 'cantidad_surtir', e.target.value)}
+                            className={clsx(inputClass, 'text-[12px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
+                            disabled={disabled} placeholder="21 tab" />
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -656,13 +687,25 @@ export default function ConsultaDetallePage() {
               <div className="flex items-center gap-2 mb-2">
                 <NotebookPen className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                 <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">Indicaciones y comentarios</h3>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-1">— aparecen en la receta</span>
+                <span className="text-[12px] text-slate-400 dark:text-slate-500 ml-1">— aparecen en la receta</span>
               </div>
               <RichTextEditor
                 value={form.notas_adicionales}
                 onChange={(v) => updateField('notas_adicionales', v)}
                 disabled={disabled}
               />
+            </div>
+
+            {/* Plan de tratamiento */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">Plan de tratamiento</h3>
+              </div>
+              <textarea value={form.plan_tratamiento}
+                onChange={(e) => updateField('plan_tratamiento', e.target.value)}
+                rows={5} className={clsx(`${inputClass} resize-none`, disabled && 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400')}
+                disabled={disabled} placeholder="Indicaciones, estudios, referidos..." />
             </div>
           </div>
 

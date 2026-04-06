@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Save, Baby, Syringe, Plus, Trash2, HeartPulse, MapPin, Utensils
+  Save, Baby, Syringe, Plus, Trash2, HeartPulse, MapPin, Utensils, Activity
 } from 'lucide-react'
 import api from '../lib/api'
 import useModulePermission from '../hooks/useModulePermission'
@@ -15,6 +15,9 @@ const EMPTY_FORM = {
   ablactacion: '', alimentacion: '', zoonosis: '',
   lugar_nacimiento: '', lugar_residencia: '',
   respiro_al_nacer: null, lloro_al_nacer: null, desarrollo_psicomotor: '',
+  sonrisa_social: '', levantamiento_cabeza: '', sento_solo: '', paro_ayuda: '',
+  gateo: '', camino: '', inicio_lenguaje: '', control_esfinteres: '',
+  inicio_jardin_ninos: '', primaria: '',
 }
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
@@ -25,7 +28,7 @@ const inputClass = "w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:b
 function MiniField({ label, value, onChange, type = 'text', step, disabled, rows, placeholder }) {
   return (
     <div>
-      <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">{label}</label>
+      <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">{label}</label>
       {rows ? (
         <textarea value={value ?? ''} rows={rows}
           onChange={(e) => onChange(e.target.value)}
@@ -44,7 +47,7 @@ function MiniField({ label, value, onChange, type = 'text', step, disabled, rows
 function MiniSelect({ label, value, onChange, options, disabled }) {
   return (
     <div>
-      <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">{label}</label>
+      <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">{label}</label>
       <select value={value ?? ''} onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         className={clsx(inputClass, 'py-1', disabled && 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400')}>
@@ -104,6 +107,16 @@ export default function AntecedentesNoPatologicosPage() {
         respiro_al_nacer: antData.respiro_al_nacer,
         lloro_al_nacer: antData.lloro_al_nacer,
         desarrollo_psicomotor: antData.desarrollo_psicomotor || '',
+        sonrisa_social: antData.sonrisa_social || '',
+        levantamiento_cabeza: antData.levantamiento_cabeza || '',
+        sento_solo: antData.sento_solo || '',
+        paro_ayuda: antData.paro_ayuda || '',
+        gateo: antData.gateo || '',
+        camino: antData.camino || '',
+        inicio_lenguaje: antData.inicio_lenguaje || '',
+        control_esfinteres: antData.control_esfinteres || '',
+        inicio_jardin_ninos: antData.inicio_jardin_ninos || '',
+        primaria: antData.primaria || '',
       })
       setInmunizaciones(antData.inmunizaciones || [])
       setExistingId(antData.id)
@@ -115,10 +128,20 @@ export default function AntecedentesNoPatologicosPage() {
   }, [antData, isError, selectedPaciente])
 
   const saveMutation = useMutation({
-    mutationFn: (data) =>
-      existingId
-        ? api.put(`/antecedentes-no-patologicos/${existingId}`, { ...data, inmunizaciones })
-        : api.post('/antecedentes-no-patologicos', { ...data, paciente_id: selectedPaciente, inmunizaciones }),
+    mutationFn: (data) => {
+      const n = (v) => (v === '' || v == null) ? null : Number(v)
+      const cleaned = {
+        ...data,
+        peso_nacer_kg: n(data.peso_nacer_kg),
+        talla_nacer_cm: n(data.talla_nacer_cm),
+        inicio_formula_meses: n(data.inicio_formula_meses),
+        respiro_al_nacer: data.respiro_al_nacer == null ? null : Number(data.respiro_al_nacer),
+        lloro_al_nacer: data.lloro_al_nacer == null ? null : Number(data.lloro_al_nacer),
+      }
+      return existingId
+        ? api.put(`/antecedentes-no-patologicos/${existingId}`, { ...cleaned, inmunizaciones })
+        : api.post('/antecedentes-no-patologicos', { ...cleaned, paciente_id: selectedPaciente, inmunizaciones })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['antecedentes_pnp', selectedPaciente] })
       toast.success('Antecedentes no patológicos guardados')
@@ -195,7 +218,34 @@ export default function AntecedentesNoPatologicosPage() {
                   <MiniField label="Lugar residencia" value={form.lugar_residencia} onChange={(v) => updateField('lugar_residencia', v)} disabled={!canEdit} />
                 </div>
                 <div className="mt-1.5">
-                  <MiniField label="Desarrollo psicomotor" value={form.desarrollo_psicomotor} onChange={(v) => updateField('desarrollo_psicomotor', v)} disabled={!canEdit} rows={2} />
+                  <MiniField label="Notas adicionales" value={form.desarrollo_psicomotor} onChange={(v) => updateField('desarrollo_psicomotor', v)} disabled={!canEdit} rows={2} />
+                </div>
+              </div>
+
+              {/* Desarrollo Psicomotor */}
+              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                  <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">Desarrollo psicomotor</h3>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 ml-1">— edad en meses</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                  {[
+                    { key: 'sonrisa_social',       label: 'Sonrisa social' },
+                    { key: 'levantamiento_cabeza',  label: 'Levanta cabeza' },
+                    { key: 'sento_solo',            label: 'Sentó solo' },
+                    { key: 'paro_ayuda',            label: 'Paró con ayuda' },
+                    { key: 'gateo',                 label: 'Gateo' },
+                    { key: 'camino',                label: 'Caminó' },
+                    { key: 'inicio_lenguaje',       label: 'Inicio lenguaje' },
+                    { key: 'control_esfinteres',    label: 'Control esfínteres' },
+                    { key: 'inicio_jardin_ninos',   label: 'Jardín de niños' },
+                    { key: 'primaria',              label: 'Primaria' },
+                  ].map(({ key, label }) => (
+                    <MiniField key={key} label={label} value={form[key]}
+                      onChange={(v) => updateField(key, v)}
+                      disabled={!canEdit} placeholder="meses" />
+                  ))}
                 </div>
               </div>
             </div>
@@ -208,7 +258,7 @@ export default function AntecedentesNoPatologicosPage() {
                   <div className="flex items-center gap-2">
                     <Syringe className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                     <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">Inmunizaciones</h3>
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded-full">{inmunizaciones.length}</span>
+                    <span className="text-[12px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded-full">{inmunizaciones.length}</span>
                   </div>
                   {canEdit && (
                     <button type="button" onClick={addInmunizacion}

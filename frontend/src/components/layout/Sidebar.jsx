@@ -30,7 +30,7 @@ export default function Sidebar() {
   return (
     <aside
       className={clsx(
-        'bg-slate-900 text-white flex flex-col transition-all duration-300 min-h-screen',
+        'bg-slate-900 text-white flex flex-col transition-all duration-300 h-screen sticky top-0 shrink-0',
         collapsed ? 'w-16' : 'w-60'
       )}
     >
@@ -41,7 +41,7 @@ export default function Sidebar() {
             <ShieldCheck className="w-7 h-7 text-primary-light" />
             <div>
               <h1 className="text-sm font-semibold leading-tight">Historia Clínica</h1>
-              <p className="text-[10px] text-slate-400">Pediátrica</p>
+              <p className="text-[12px] text-slate-400">Pediátrica</p>
             </div>
           </div>
         )}
@@ -78,7 +78,7 @@ export default function Sidebar() {
       {/* Footer */}
       {!collapsed && (
         <div className="px-4 py-3 border-t border-white/10">
-          <p className="text-[10px] text-slate-500">v1.0.0</p>
+          <p className="text-[12px] text-slate-500">v1.0.0</p>
         </div>
       )}
     </aside>
