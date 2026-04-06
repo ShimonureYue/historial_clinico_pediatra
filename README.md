@@ -438,3 +438,16 @@ El sistema fue migrado desde una base Access con:
 - Antecedentes patologicos, no patologicos y heredo familiares
 - Inmunizaciones por paciente
 - Desarrollo psicomotor (10 hitos por paciente)
+
+---
+
+## Desarrollo asistido por IA
+
+Este proyecto se desarrolla con la asistencia de [Claude](https://claude.ai) de Anthropic, utilizando los siguientes modelos:
+
+| Modelo | Uso |
+|--------|-----|
+| **Claude Opus 4** | Arquitectura, refactoring complejo, migracion de datos, code review |
+| **Claude Sonnet 4** | Desarrollo de features, debugging, generacion de componentes |
+
+Herramienta: [Claude Code](https://claude.ai/claude-code) (CLI)
