@@ -72,7 +72,7 @@ export default function DashboardPage() {
                       className="w-full bg-blue-500 rounded-t-lg transition-all"
                       style={{ height: `${barH}px` }}
                     />
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">{mesLabel(r.mes)}</span>
+                    <span className="text-[12px] text-slate-400 dark:text-slate-500">{mesLabel(r.mes)}</span>
                   </div>
                 )
               })}
@@ -99,7 +99,7 @@ export default function DashboardPage() {
                       className="w-full bg-pink-500 rounded-t-lg transition-all"
                       style={{ height: `${barH}px` }}
                     />
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">{mesLabel(r.mes)}</span>
+                    <span className="text-[12px] text-slate-400 dark:text-slate-500">{mesLabel(r.mes)}</span>
                   </div>
                 )
               })}
@@ -167,7 +167,7 @@ export default function DashboardPage() {
           {/* Ultima consulta */}
           {stats.ultima_consulta && (
             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
-              <p className="text-[10px] uppercase font-semibold text-blue-500 dark:text-blue-400 mb-1">Última Consulta</p>
+              <p className="text-[12px] uppercase font-semibold text-blue-500 dark:text-blue-400 mb-1">Última Consulta</p>
               <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
                 {stats.ultima_consulta.nombre} {stats.ultima_consulta.apellido_paterno}
               </p>
@@ -185,7 +185,7 @@ export default function DashboardPage() {
           {/* Ultimo paciente */}
           {stats.ultimo_paciente && (
             <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-100 dark:border-green-800">
-              <p className="text-[10px] uppercase font-semibold text-green-500 dark:text-green-400 mb-1">Último Paciente Registrado</p>
+              <p className="text-[12px] uppercase font-semibold text-green-500 dark:text-green-400 mb-1">Último Paciente Registrado</p>
               <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
                 {stats.ultimo_paciente.nombre} {stats.ultimo_paciente.apellido_paterno} {stats.ultimo_paciente.apellido_materno}
               </p>
@@ -215,9 +215,9 @@ export default function DashboardPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-700/50 text-left">
-                  <th className="px-4 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Fecha</th>
-                  <th className="px-4 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Paciente</th>
-                  <th className="px-4 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase hidden sm:table-cell">Diagnóstico</th>
+                  <th className="px-4 py-2 text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Fecha</th>
+                  <th className="px-4 py-2 text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Paciente</th>
+                  <th className="px-4 py-2 text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase hidden sm:table-cell">Diagnóstico</th>
                   <th className="px-4 py-2"></th>
                 </tr>
               </thead>
@@ -252,9 +252,9 @@ export default function DashboardPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-700/50 text-left">
-                  <th className="px-4 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Nombre</th>
-                  <th className="px-4 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase hidden sm:table-cell">Sexo</th>
-                  <th className="px-4 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase hidden sm:table-cell">Nac.</th>
+                  <th className="px-4 py-2 text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Nombre</th>
+                  <th className="px-4 py-2 text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase hidden sm:table-cell">Sexo</th>
+                  <th className="px-4 py-2 text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase hidden sm:table-cell">Nac.</th>
                   <th className="px-4 py-2"></th>
                 </tr>
               </thead>
@@ -264,7 +264,7 @@ export default function DashboardPage() {
                     <td className="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">{p.nombre} {p.apellido_paterno} {p.apellido_materno}</td>
                     <td className="px-4 py-2.5 hidden sm:table-cell">
                       <span className={clsx(
-                        'inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium',
+                        'inline-flex items-center px-1.5 py-0.5 rounded-full text-[12px] font-medium',
                         p.sexo === 'F' ? 'bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
                       )}>
                         {p.sexo === 'F' ? 'F' : 'M'}
@@ -306,7 +306,7 @@ function KpiCard({ icon: Icon, label, value, color }) {
       </div>
       <div>
         <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{value}</p>
-        <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-medium">{label}</p>
+        <p className="text-[12px] text-slate-500 dark:text-slate-400 uppercase font-medium">{label}</p>
       </div>
     </div>
   )

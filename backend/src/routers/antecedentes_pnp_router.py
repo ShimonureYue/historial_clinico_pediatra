@@ -36,6 +36,16 @@ class AntecedentePNPCreate(BaseModel):
     respiro_al_nacer: Optional[int] = None
     lloro_al_nacer: Optional[int] = None
     desarrollo_psicomotor: Optional[str] = None
+    sonrisa_social: Optional[str] = None
+    levantamiento_cabeza: Optional[str] = None
+    sento_solo: Optional[str] = None
+    paro_ayuda: Optional[str] = None
+    gateo: Optional[str] = None
+    camino: Optional[str] = None
+    inicio_lenguaje: Optional[str] = None
+    control_esfinteres: Optional[str] = None
+    inicio_jardin_ninos: Optional[str] = None
+    primaria: Optional[str] = None
     inmunizaciones: list[InmunizacionData] = []
 
 
@@ -56,6 +66,16 @@ class AntecedentePNPUpdate(BaseModel):
     respiro_al_nacer: Optional[int] = None
     lloro_al_nacer: Optional[int] = None
     desarrollo_psicomotor: Optional[str] = None
+    sonrisa_social: Optional[str] = None
+    levantamiento_cabeza: Optional[str] = None
+    sento_solo: Optional[str] = None
+    paro_ayuda: Optional[str] = None
+    gateo: Optional[str] = None
+    camino: Optional[str] = None
+    inicio_lenguaje: Optional[str] = None
+    control_esfinteres: Optional[str] = None
+    inicio_jardin_ninos: Optional[str] = None
+    primaria: Optional[str] = None
     inmunizaciones: list[InmunizacionData] = []
 
 
@@ -99,14 +119,20 @@ def create(data: AntecedentePNPCreate, user=Depends(require_permission("antecede
                (paciente_id, producto_gesta, tipo_nacimiento, peso_nacer_kg, talla_nacer_cm,
                 seno_materno, inicio_formula_meses, tipo_sangre, apgar,
                 ablactacion, alimentacion, zoonosis, lugar_nacimiento, lugar_residencia,
-                respiro_al_nacer, lloro_al_nacer, desarrollo_psicomotor)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                respiro_al_nacer, lloro_al_nacer, desarrollo_psicomotor,
+                sonrisa_social, levantamiento_cabeza, sento_solo, paro_ayuda,
+                gateo, camino, inicio_lenguaje, control_esfinteres,
+                inicio_jardin_ninos, primaria)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (data.paciente_id, data.producto_gesta, data.tipo_nacimiento,
              data.peso_nacer_kg, data.talla_nacer_cm, int(data.seno_materno or 0),
              data.inicio_formula_meses, data.tipo_sangre, data.apgar,
              data.ablactacion, data.alimentacion, data.zoonosis,
              data.lugar_nacimiento, data.lugar_residencia,
-             data.respiro_al_nacer, data.lloro_al_nacer, data.desarrollo_psicomotor),
+             data.respiro_al_nacer, data.lloro_al_nacer, data.desarrollo_psicomotor,
+             data.sonrisa_social, data.levantamiento_cabeza, data.sento_solo, data.paro_ayuda,
+             data.gateo, data.camino, data.inicio_lenguaje, data.control_esfinteres,
+             data.inicio_jardin_ninos, data.primaria),
         )
         anp_id = cursor.lastrowid
         _save_inmunizaciones(conn, anp_id, data.inmunizaciones)
@@ -122,7 +148,10 @@ def update(record_id: int, data: AntecedentePNPUpdate, user=Depends(require_perm
                    seno_materno=?, inicio_formula_meses=?, tipo_sangre=?, apgar=?,
                    ablactacion=?, alimentacion=?, zoonosis=?,
                    lugar_nacimiento=?, lugar_residencia=?,
-                   respiro_al_nacer=?, lloro_al_nacer=?, desarrollo_psicomotor=?
+                   respiro_al_nacer=?, lloro_al_nacer=?, desarrollo_psicomotor=?,
+                   sonrisa_social=?, levantamiento_cabeza=?, sento_solo=?, paro_ayuda=?,
+                   gateo=?, camino=?, inicio_lenguaje=?, control_esfinteres=?,
+                   inicio_jardin_ninos=?, primaria=?
                WHERE id=?""",
             (data.producto_gesta, data.tipo_nacimiento,
              data.peso_nacer_kg, data.talla_nacer_cm, int(data.seno_materno or 0),
@@ -130,6 +159,9 @@ def update(record_id: int, data: AntecedentePNPUpdate, user=Depends(require_perm
              data.ablactacion, data.alimentacion, data.zoonosis,
              data.lugar_nacimiento, data.lugar_residencia,
              data.respiro_al_nacer, data.lloro_al_nacer, data.desarrollo_psicomotor,
+             data.sonrisa_social, data.levantamiento_cabeza, data.sento_solo, data.paro_ayuda,
+             data.gateo, data.camino, data.inicio_lenguaje, data.control_esfinteres,
+             data.inicio_jardin_ninos, data.primaria,
              record_id),
         )
         if result.rowcount == 0:

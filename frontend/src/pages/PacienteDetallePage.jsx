@@ -152,6 +152,9 @@ const EMPTY_PNP = {
   ablactacion: '', alimentacion: '', zoonosis: '',
   lugar_nacimiento: '', lugar_residencia: '',
   respiro_al_nacer: null, lloro_al_nacer: null, desarrollo_psicomotor: '',
+  sonrisa_social: '', levantamiento_cabeza: '', sento_solo: '', paro_ayuda: '',
+  gateo: '', camino: '', inicio_lenguaje: '', control_esfinteres: '',
+  inicio_jardin_ninos: '', primaria: '',
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -211,7 +214,7 @@ export default function PacienteDetallePage() {
             key={tabId}
             onClick={() => setActiveTab(tabId)}
             className={clsx(
-              'flex flex-col items-center justify-center gap-1 py-3 px-3 sm:flex-1 transition-all relative text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap shrink-0 min-w-[72px]',
+              'flex flex-col items-center justify-center gap-1 py-3 px-3 sm:flex-1 transition-all relative text-[12px] font-semibold uppercase tracking-wide whitespace-nowrap shrink-0 min-w-[72px]',
               idx !== 0 && 'border-l border-slate-200 dark:border-slate-700',
               activeTab === tabId
                 ? 'text-primary bg-white dark:bg-slate-800'
@@ -488,7 +491,7 @@ function ConsultasSidebar({ pacienteId }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {consultas.map((c, idx) => (
+          {[...consultas].sort((a, b) => (b.fecha_consulta || '').localeCompare(a.fecha_consulta || '')).map((c, idx) => (
             <div key={c.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
               <button
                 onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}
@@ -567,16 +570,18 @@ function HistorialConsultas({ pacienteId }) {
 
   const handleCreate = (e) => { e.preventDefault(); createMutation.mutate(newForm) }
 
-  const filtered = consultas.filter((c) => {
-    if (!searchTerm) return true
-    const q = searchTerm.toLowerCase()
-    return (
-      (c.fecha_consulta || '').toLowerCase().includes(q) ||
-      (c.padecimiento_actual || '').toLowerCase().includes(q) ||
-      (c.impresion_diagnostica || '').toLowerCase().includes(q) ||
-      (c.tratamientos || []).some((t) => (t.nombre_medicamento || '').toLowerCase().includes(q))
-    )
-  })
+  const filtered = [...consultas]
+    .sort((a, b) => (b.fecha_consulta || '').localeCompare(a.fecha_consulta || ''))
+    .filter((c) => {
+      if (!searchTerm) return true
+      const q = searchTerm.toLowerCase()
+      return (
+        (c.fecha_consulta || '').toLowerCase().includes(q) ||
+        (c.padecimiento_actual || '').toLowerCase().includes(q) ||
+        (c.impresion_diagnostica || '').toLowerCase().includes(q) ||
+        (c.tratamientos || []).some((t) => (t.nombre_medicamento || '').toLowerCase().includes(q))
+      )
+    })
 
   const selected = consultas.find((c) => c.id === selectedId) || null
   const totalMeds = consultas.reduce((sum, c) => sum + (c.tratamientos?.length || 0), 0)
@@ -655,7 +660,7 @@ function HistorialConsultas({ pacienteId }) {
                       <div className="flex items-center justify-between gap-2">
                         <p className={clsx('text-sm font-semibold', selectedId === c.id ? 'text-primary' : 'text-slate-800 dark:text-slate-100')}>{c.fecha_consulta}</p>
                         {c.tratamientos?.length > 0 && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-medium">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[12px] font-medium">
                             <Pill className="w-2.5 h-2.5 mr-0.5" /> {c.tratamientos.length}
                           </span>
                         )}
@@ -710,12 +715,12 @@ function ConsultaDetailContent({ c, expanded = false }) {
   return (
     <>
       <div>
-        <h5 className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Padecimiento Actual</h5>
+        <h5 className="text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Padecimiento Actual</h5>
         <p className={clsx('text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700', expanded && 'whitespace-pre-wrap')}>{c.padecimiento_actual}</p>
       </div>
       {c.mediciones && (
         <div>
-          <h5 className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Exploración Física</h5>
+          <h5 className="text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Exploración Física</h5>
           <div className={clsx('grid gap-1.5', expanded ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-2 sm:grid-cols-3')}>
             {c.mediciones.peso_kg != null && <StatChip icon={Weight} label="Peso" value={`${c.mediciones.peso_kg} kg`} />}
             {c.mediciones.talla_cm != null && <StatChip icon={Ruler} label="Talla" value={`${c.mediciones.talla_cm} cm`} />}
@@ -730,27 +735,27 @@ function ConsultaDetailContent({ c, expanded = false }) {
       )}
       {c.impresion_diagnostica && (
         <div>
-          <h5 className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Impresión Diagnóstica</h5>
+          <h5 className="text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Impresión Diagnóstica</h5>
           <p className="text-sm text-slate-700 dark:text-slate-200 bg-amber-50 dark:bg-amber-900/30 p-3 rounded-xl border border-amber-100 dark:border-amber-800">{c.impresion_diagnostica}</p>
         </div>
       )}
       {c.plan_tratamiento && (
         <div>
-          <h5 className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Plan de Tratamiento</h5>
+          <h5 className="text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Plan de Tratamiento</h5>
           <p className={clsx('text-sm text-slate-700 dark:text-slate-200 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800', expanded && 'whitespace-pre-wrap')}>{c.plan_tratamiento}</p>
         </div>
       )}
       {c.tratamientos?.length > 0 && (
         <div>
-          <h5 className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Tratamiento / Medicamentos</h5>
+          <h5 className="text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Tratamiento / Medicamentos</h5>
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 overflow-hidden">
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-700 text-left">
-                  <th className="px-3 py-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Medicamento</th>
-                  <th className="px-3 py-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase hidden sm:table-cell">Presentación</th>
-                  <th className="px-3 py-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Dosis</th>
-                  <th className="px-3 py-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase hidden sm:table-cell">Vía</th>
+                  <th className="px-3 py-1.5 text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Medicamento</th>
+                  <th className="px-3 py-1.5 text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase hidden sm:table-cell">Presentación</th>
+                  <th className="px-3 py-1.5 text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase">Dosis</th>
+                  <th className="px-3 py-1.5 text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase hidden sm:table-cell">Vía</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
@@ -769,7 +774,7 @@ function ConsultaDetailContent({ c, expanded = false }) {
       )}
       {c.notas_adicionales && (
         <div>
-          <h5 className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Indicaciones y comentarios</h5>
+          <h5 className="text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Indicaciones y comentarios</h5>
           <div
             className="text-sm text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700 prose prose-xs dark:prose-invert max-w-none [&_p]:my-0.5 [&_ul]:my-0.5 [&_ol]:my-0.5 [&_ul]:pl-4 [&_ol]:pl-4 [&_li]:my-0"
             dangerouslySetInnerHTML={{ __html: c.notas_adicionales }}
@@ -954,6 +959,16 @@ const TabNoPatologicos = forwardRef(function TabNoPatologicos({ pacienteId, edit
         respiro_al_nacer: data.respiro_al_nacer,
         lloro_al_nacer: data.lloro_al_nacer,
         desarrollo_psicomotor: data.desarrollo_psicomotor || '',
+        sonrisa_social: data.sonrisa_social ?? '',
+        levantamiento_cabeza: data.levantamiento_cabeza ?? '',
+        sento_solo: data.sento_solo ?? '',
+        paro_ayuda: data.paro_ayuda ?? '',
+        gateo: data.gateo ?? '',
+        camino: data.camino ?? '',
+        inicio_lenguaje: data.inicio_lenguaje ?? '',
+        control_esfinteres: data.control_esfinteres ?? '',
+        inicio_jardin_ninos: data.inicio_jardin_ninos ?? '',
+        primaria: data.primaria ?? '',
       })
       setInmunizaciones(data.inmunizaciones || [])
       setExistingId(data.id)
@@ -981,7 +996,17 @@ const TabNoPatologicos = forwardRef(function TabNoPatologicos({ pacienteId, edit
           inmunizaciones.length > 0
         if (!hasContent) return
       }
-      await saveMutation.mutateAsync({ ...form, inmunizaciones })
+      const n = (v) => (v === '' || v == null) ? null : Number(v)
+      const payload = {
+        ...form,
+        peso_nacer_kg: n(form.peso_nacer_kg),
+        talla_nacer_cm: n(form.talla_nacer_cm),
+        inicio_formula_meses: n(form.inicio_formula_meses),
+        respiro_al_nacer: form.respiro_al_nacer == null ? null : Number(form.respiro_al_nacer),
+        lloro_al_nacer: form.lloro_al_nacer == null ? null : Number(form.lloro_al_nacer),
+        inmunizaciones,
+      }
+      await saveMutation.mutateAsync(payload)
     },
     cancel: () => {
       if (data) {
@@ -1002,6 +1027,16 @@ const TabNoPatologicos = forwardRef(function TabNoPatologicos({ pacienteId, edit
           respiro_al_nacer: data.respiro_al_nacer,
           lloro_al_nacer: data.lloro_al_nacer,
           desarrollo_psicomotor: data.desarrollo_psicomotor || '',
+          sonrisa_social: data.sonrisa_social ?? '',
+          levantamiento_cabeza: data.levantamiento_cabeza ?? '',
+          sento_solo: data.sento_solo ?? '',
+          paro_ayuda: data.paro_ayuda ?? '',
+          gateo: data.gateo ?? '',
+          camino: data.camino ?? '',
+          inicio_lenguaje: data.inicio_lenguaje ?? '',
+          control_esfinteres: data.control_esfinteres ?? '',
+          inicio_jardin_ninos: data.inicio_jardin_ninos ?? '',
+          primaria: data.primaria ?? '',
         })
         setInmunizaciones(data.inmunizaciones || [])
       } else {
@@ -1031,26 +1066,26 @@ const TabNoPatologicos = forwardRef(function TabNoPatologicos({ pacienteId, edit
           {/* Row 1: gesta / tipo nac / sangre / apgar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Producto Gesta</label>
+              <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Producto Gesta</label>
               <input value={form.producto_gesta} onChange={(e) => updateField('producto_gesta', e.target.value)}
                 className={sel} disabled={disabled} />
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Tipo Nacimiento</label>
+              <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Tipo Nacimiento</label>
               <select value={form.tipo_nacimiento} onChange={(e) => updateField('tipo_nacimiento', e.target.value)} className={sel} disabled={disabled}>
                 <option value="">—</option>
                 {BIRTH_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Tipo de Sangre</label>
+              <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Tipo de Sangre</label>
               <select value={form.tipo_sangre} onChange={(e) => updateField('tipo_sangre', e.target.value)} className={sel} disabled={disabled}>
                 <option value="">—</option>
                 {BLOOD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Apgar</label>
+              <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Apgar</label>
               <input value={form.apgar} onChange={(e) => updateField('apgar', e.target.value)}
                 className={sel} disabled={disabled} placeholder="8/9" />
             </div>
@@ -1059,22 +1094,22 @@ const TabNoPatologicos = forwardRef(function TabNoPatologicos({ pacienteId, edit
           {/* Row 2: peso / talla / formula / ablactacion */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Peso Nacer (kg)</label>
+              <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Peso Nacer (kg)</label>
               <input type="number" step="0.01" value={form.peso_nacer_kg} onChange={(e) => updateField('peso_nacer_kg', e.target.value)}
                 className={sel} disabled={disabled} />
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Talla Nacer (cm)</label>
+              <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Talla Nacer (cm)</label>
               <input type="number" step="0.1" value={form.talla_nacer_cm} onChange={(e) => updateField('talla_nacer_cm', e.target.value)}
                 className={sel} disabled={disabled} />
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Fórmula (meses)</label>
+              <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Fórmula (meses)</label>
               <input type="number" value={form.inicio_formula_meses} onChange={(e) => updateField('inicio_formula_meses', e.target.value)}
                 className={sel} disabled={disabled} />
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Ablactación</label>
+              <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Ablactación</label>
               <input value={form.ablactacion} onChange={(e) => updateField('ablactacion', e.target.value)}
                 className={sel} disabled={disabled} />
             </div>
@@ -1083,29 +1118,29 @@ const TabNoPatologicos = forwardRef(function TabNoPatologicos({ pacienteId, edit
           {/* Row 3: alimentacion / zoonosis / nacimiento / residencia */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Alimentación</label>
+              <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Alimentación</label>
               <input value={form.alimentacion} onChange={(e) => updateField('alimentacion', e.target.value)}
                 className={sel} disabled={disabled} />
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Zoonosis</label>
+              <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Zoonosis</label>
               <input value={form.zoonosis} onChange={(e) => updateField('zoonosis', e.target.value)}
                 className={sel} disabled={disabled} />
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Lugar Nacimiento</label>
+              <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Lugar Nacimiento</label>
               <input value={form.lugar_nacimiento} onChange={(e) => updateField('lugar_nacimiento', e.target.value)}
                 className={sel} disabled={disabled} />
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Lugar Residencia</label>
+              <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Lugar Residencia</label>
               <input value={form.lugar_residencia} onChange={(e) => updateField('lugar_residencia', e.target.value)}
                 className={sel} disabled={disabled} />
             </div>
           </div>
 
-          {/* Row 4: checkboxes + psicomotor */}
-          <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+          {/* Row 4: checkboxes */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <label className={clsx('flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300', !disabled && 'cursor-pointer')}>
               <input type="checkbox" checked={form.seno_materno} onChange={(e) => updateField('seno_materno', e.target.checked)}
                 disabled={disabled} className="w-3.5 h-3.5 rounded accent-primary" />
@@ -1121,11 +1156,44 @@ const TabNoPatologicos = forwardRef(function TabNoPatologicos({ pacienteId, edit
                 disabled={disabled} className="w-3.5 h-3.5 rounded accent-primary" />
               Lloró al Nacer
             </label>
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Desarrollo Psicomotor</label>
-              <input value={form.desarrollo_psicomotor} onChange={(e) => updateField('desarrollo_psicomotor', e.target.value)}
-                className={sel} disabled={disabled} />
-            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Desarrollo Psicomotor */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+        <div className="flex items-center px-4 py-2.5 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide">
+            Desarrollo Psicomotor <span className="normal-case font-normal text-slate-400">(meses)</span>
+          </h3>
+        </div>
+        <div className="p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {[
+              { key: 'sonrisa_social', label: 'Sonrisa Social' },
+              { key: 'levantamiento_cabeza', label: 'Levanta Cabeza' },
+              { key: 'sento_solo', label: 'Sentó Solo' },
+              { key: 'paro_ayuda', label: 'Paró con Ayuda' },
+              { key: 'gateo', label: 'Gateo' },
+              { key: 'camino', label: 'Caminó' },
+              { key: 'inicio_lenguaje', label: 'Inicio Lenguaje' },
+              { key: 'control_esfinteres', label: 'Control Esfínteres' },
+              { key: 'inicio_jardin_ninos', label: 'Jardín de Niños' },
+              { key: 'primaria', label: 'Primaria' },
+            ].map(({ key, label }) => (
+              <div key={key}>
+                <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">{label}</label>
+                <input
+                  type="number"
+                  value={form[key]}
+                  onChange={(e) => updateField(key, e.target.value)}
+                  className={sel}
+                  disabled={disabled}
+                  placeholder="meses"
+                  min="0"
+                />
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -1222,11 +1290,11 @@ function ImmunizationGrid({ inmunizaciones, setInmunizaciones, disabled }) {
       <table className="text-xs w-full">
         <thead>
           <tr className="bg-slate-50 dark:bg-slate-700/60">
-            <th className="text-left pl-3 pr-2 py-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Vacuna</th>
+            <th className="text-left pl-3 pr-2 py-1.5 text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Vacuna</th>
             {Array.from({ length: maxDosis }, (_, i) => {
               const lbl = rows.map((e) => e.dosis[i]).find(Boolean) ?? `${i + 1}a`
               return (
-                <th key={i} className="py-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase text-center" style={{ width: 48 }}>
+                <th key={i} className="py-1.5 text-[12px] font-semibold text-slate-500 dark:text-slate-400 uppercase text-center" style={{ width: 48 }}>
                   {lbl}
                 </th>
               )
@@ -1251,7 +1319,7 @@ function ImmunizationGrid({ inmunizaciones, setInmunizaciones, disabled }) {
                       </span>
                     )}
                     {!allDone && applied > 0 && (
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 tabular-nums shrink-0">{applied}/{total}</span>
+                      <span className="text-[12px] text-slate-400 dark:text-slate-500 tabular-nums shrink-0">{applied}/{total}</span>
                     )}
                   </div>
                 </td>
@@ -1335,7 +1403,7 @@ function ImmunizationGrid({ inmunizaciones, setInmunizaciones, disabled }) {
                   <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
                 </div>
                 <span className="text-xs font-medium text-slate-700 dark:text-slate-200 flex-1 truncate">{vacuna}</span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{unmappedByVacuna[vacuna].length}d</span>
+                <span className="text-[12px] text-slate-400 dark:text-slate-500 shrink-0">{unmappedByVacuna[vacuna].length}d</span>
               </div>
             ))}
           </div>
@@ -1492,7 +1560,7 @@ function StatChip({ icon: Icon, label, value }) {
     <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700 flex items-center gap-2">
       <Icon className="w-3.5 h-3.5 text-primary flex-shrink-0" />
       <div>
-        <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-semibold">{label}</p>
+        <p className="text-[12px] text-slate-400 dark:text-slate-500 uppercase font-semibold">{label}</p>
         <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">{value}</p>
       </div>
     </div>

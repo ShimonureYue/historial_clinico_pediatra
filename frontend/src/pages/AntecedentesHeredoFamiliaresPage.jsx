@@ -94,7 +94,7 @@ export default function AntecedentesHeredoFamiliaresPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {FIELDS.map(({ key, label }) => (
                 <div key={key}>
-                  <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">{label}</label>
+                  <label className="block text-[12px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">{label}</label>
                   <textarea value={form[key]} onChange={(e) => updateField(key, e.target.value)}
                     rows={2} disabled={dis}
                     placeholder={`Patologías de ${label.toLowerCase()}...`}

@@ -33,7 +33,7 @@ export default function TopBar({ title }) {
             <User className="w-3 h-3" />
           </div>
           <span className="hidden sm:inline text-[11px] font-medium text-slate-600 dark:text-slate-300">{user?.nombre}</span>
-          <span className="hidden sm:inline text-[10px] text-slate-400 dark:text-slate-500 capitalize">({user?.rol})</span>
+          <span className="hidden sm:inline text-[12px] text-slate-400 dark:text-slate-500 capitalize">({user?.rol})</span>
         </div>
 
         <button

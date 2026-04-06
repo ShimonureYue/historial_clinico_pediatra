@@ -27,14 +27,14 @@ historial_beto_claude/
 │   │   ├── App.jsx                      # Rutas (react-router-dom)
 │   │   ├── components/layout/
 │   │   │   ├── DashboardLayout.jsx      # Shell principal con Outlet
-│   │   │   ├── Sidebar.jsx              # Menu lateral (filtrado por permisos)
+│   │   │   ├── Sidebar.jsx              # Menu lateral sticky (filtrado por permisos)
 │   │   │   └── TopBar.jsx               # Barra superior + toggle dark mode
 │   │   ├── pages/
 │   │   │   ├── LoginPage.jsx            # Login con JWT
 │   │   │   ├── PacientesPage.jsx        # Lista paginada + busqueda nombre completo
 │   │   │   ├── PacienteDetallePage.jsx  # Detalle paciente + antecedentes + consultas
 │   │   │   ├── ConsultasPage.jsx        # Lista paginada + busqueda
-│   │   │   ├── ConsultaDetallePage.jsx  # Detalle consulta + mediciones + tratamientos
+│   │   │   ├── ConsultaDetallePage.jsx  # Detalle consulta + mediciones + tratamientos + receta PDF
 │   │   │   ├── AntecedentesPatologicosPage.jsx
 │   │   │   ├── AntecedentesNoPatologicosPage.jsx
 │   │   │   ├── AntecedentesHeredoFamiliaresPage.jsx
@@ -67,7 +67,10 @@ historial_beto_claude/
 │   └── beto/                            # Capturas del sistema VB original
 ├── build/                               # Paquete Windows (generado)
 │   └── HistorialPediatrico/
-└── CLAUDE.md                            # Guia para desarrollo con IA
+├── .env.example                          # Variables de entorno configurables
+├── .python-version                       # Version de Python para pyenv (3.14)
+├── setup.sh                              # Setup portable (recrea venv en cualquier maquina)
+└── CLAUDE.md                             # Guia para desarrollo con IA
 ```
 
 ## Modulos del Sistema
@@ -78,7 +81,7 @@ historial_beto_claude/
 | **Consultas** | Visitas medicas con exploracion fisica (signos vitales + exploracion por region) | `consultas` |
 | **Tratamientos** | Medicamentos prescritos por consulta (nombre, dosis, via, duracion) | `consultas` |
 | **A. Patologicos** | Enfermedades exantematicas, alergias, cirugias | `antecedentes_pp` |
-| **A. No Patologicos** | Datos perinatales, inmunizaciones, tipo sangre, desarrollo psicomotor | `antecedentes_pnp` |
+| **A. No Patologicos** | Datos perinatales, inmunizaciones, tipo sangre, desarrollo psicomotor (10 hitos con edad en meses) | `antecedentes_pnp` |
 | **A. Heredo Familiares** | Patologias de familiares (abuelos, padres, hermanos) | `antecedentes_hf` |
 | **Usuarios** | Gestion de usuarios con permisos granulares por modulo | `usuarios` |
 | **Reportes** | Reportes e impresion (pendiente) | `reportes` |
@@ -193,10 +196,30 @@ Las paginas de antecedentes usan un componente reutilizable de busqueda con auto
 
 ### Formularios Compactos
 Las paginas de antecedentes y detalle de consulta usan un diseno compacto:
-- Labels: `text-[10px]` uppercase con iconos descriptivos
+- Labels: `text-[12px]` uppercase con iconos descriptivos
 - Inputs: `text-xs py-1.5 rounded-lg` con bordes sutiles
 - Layout: grids de 2 columnas en pantallas medianas (`grid-cols-1 sm:grid-cols-2`)
 - Dark mode completo en todos los campos
+
+### Desarrollo Psicomotor (10 hitos)
+La seccion de antecedentes no patologicos incluye un grid de 10 hitos del desarrollo psicomotor, cada uno con edad en meses:
+- Sonrisa social, levantamiento cabeza, sento solo, paro con ayuda, gateo
+- Camino, inicio lenguaje, control esfinteres, jardin de ninos, primaria
+- Migrados desde la tabla Access `Desarrollo_Psicomotor` hacia columnas en `antecedentes_personales_no_patologicos`
+- Grid de 5 columnas (`grid-cols-2 sm:grid-cols-5`)
+
+### Exploracion Fisica con Defaults
+Las consultas nuevas pre-llenan los campos de exploracion fisica con texto por defecto (cabeza, cuello, torax, abdomen, miembros toracicos y pelvicos) para agilizar la captura. El medico solo modifica lo que sea anormal.
+
+### Receta PDF mejorada
+La generacion de receta PDF (jsPDF) incluye:
+- Paginacion automatica con `checkPage()` para contenido largo
+- Medicamentos en formato de 2 lineas (nombre+presentacion / dosis+duracion+via+cantidad)
+- Plan de tratamiento e indicaciones con word-wrap y salto de pagina
+- Font size reducido a 10pt para aprovechar mejor el espacio
+
+### Ordenamiento de consultas
+Las consultas en el historial del paciente (tanto el sidebar como la lista principal) se ordenan por fecha descendente (mas recientes primero).
 
 ---
 
@@ -216,24 +239,35 @@ Las paginas de antecedentes y detalle de consulta usan un diseno compacto:
 
 ---
 
-## Uso en Local (Desarrollo - macOS)
+## Uso en Local (Desarrollo - macOS/Linux)
 
 ### Requisitos
-- Python 3.10+
+- Python 3.14+ (via pyenv recomendado)
 - Node.js 20+ (via nvm)
 
 ### 1. Configurar entorno
 
 ```bash
-# Python
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements.txt
+# Setup automatico (detecta Python, crea venv, instala deps)
+bash setup.sh
 
 # Node.js
 source ~/.nvm/nvm.sh && nvm use 20
 cd frontend && npm install && cd ..
 ```
+
+> **Maquina nueva o USB diferente?** Solo ejecuta `bash setup.sh` de nuevo. El script detecta si el `.venv` esta roto o desactualizado y lo recrea automaticamente.
+
+### Variables de entorno (opcional)
+
+Copia `.env.example` a `.env` para personalizar:
+
+| Variable | Default | Descripcion |
+|----------|---------|-------------|
+| `PORT` | `8000` | Puerto del servidor |
+| `SECRET_KEY` | `historial-pediatrico-...` | Clave JWT (cambiar en produccion) |
+| `DB_PATH` | `database/historial_pediatrico.db` | Ruta a la base de datos |
+| `VITE_API_PORT` | `8000` | Puerto del backend para frontend en dev |
 
 ### 2. Migrar base de datos
 
@@ -271,26 +305,22 @@ Acceder en: `http://localhost:5173`
 | Usuario | Correo | Contrasena | Rol |
 |---------|--------|------------|-----|
 | Administrador | admin@clinica.com | admin123 | admin (todos los permisos) |
-| Dr. Roberto Garcia | doctor@clinica.com | doctor123 | medico (permisos clinicos) |
+
+> **Nota:** El script de migracion solo crea el usuario admin. Los demas usuarios (medico, asistente) se crean manualmente desde el modulo de usuarios.
 
 ---
 
 ## Empaquetar para Windows
 
-El sistema se empaqueta en una carpeta autocontenida que se copia a cualquier PC con Windows. El usuario final solo necesita instalar Python (no necesita Node.js ni nada mas).
-
-Hay **dos scripts de empaquetado** segun la version de Windows destino:
+El sistema se empaqueta en una carpeta autocontenida que se copia a cualquier PC con Windows 10/11. El usuario final solo necesita instalar Python 3.14 (no necesita Node.js ni nada mas).
 
 | Script | Windows | Python requerido | Carpeta generada |
 |--------|---------|------------------|------------------|
-| `scripts/build_package.py` | Windows 10+ | 3.10+ | `build/HistorialPediatrico/` |
-| `scripts/build_package_win8.py` | Windows 8/8.1 | 3.8.x | `build/HistorialPediatrico_Win8/` |
+| `scripts/build_package.py` | Windows 10/11 | 3.14+ | `build/HistorialPediatrico/` |
 
-La diferencia es que Windows 8 requiere Python 3.8 (la ultima version compatible) y las dependencias se pinean a versiones que soportan esa version de Python.
+### Que hace el script de empaquetado
 
-### Que hace cada script de empaquetado
-
-Ambos scripts ejecutan los mismos 6 pasos:
+El script ejecuta 6 pasos:
 
 1. **Limpia** la carpeta build anterior
 2. **Compila el frontend** (`npm run build` → archivos estaticos en `static/`)
@@ -302,24 +332,14 @@ Ambos scripts ejecutan los mismos 6 pasos:
    - `run.bat` — activa el entorno, inicia uvicorn y abre el navegador
    - `README.txt` — guia paso a paso para usuario sin experiencia tecnica
 
-### Dependencias por version
+### Dependencias (Python 3.14+)
 
-**Windows 10+ (Python 3.10+):**
 ```
-fastapi==0.135.1
-uvicorn==0.41.0
+fastapi==0.135.3
+uvicorn==0.43.0
 python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.22
-```
-
-**Windows 8 (Python 3.8):**
-```
-fastapi==0.124.0
-uvicorn==0.33.0
-python-jose[cryptography]==3.4.0
-passlib[bcrypt]==1.7.4
-python-multipart==0.0.20
+python-multipart==0.0.24
 ```
 
 ### Contenido del build generado
@@ -337,6 +357,14 @@ build/HistorialPediatrico/           (32.6 MB)
 ```
 
 En produccion, FastAPI sirve el frontend compilado como SPA (sin necesidad de Node.js). Todo corre en `http://localhost:8000`.
+
+### Actualizacion sin perder datos
+
+El `README.txt` generado incluye instrucciones para actualizar el programa sin sobreescribir la base de datos:
+1. Cerrar el sistema
+2. Respaldar `database\historial_pediatrico.db`
+3. Copiar solo `backend\`, `static\` y `requirements.txt` de la version nueva
+4. No tocar la carpeta `database\`
 
 ### Flujo completo
 
@@ -365,20 +393,14 @@ python scripts/migrate_data.py --access /ruta/a/base_final.mdb
 ```bash
 source ~/.nvm/nvm.sh && nvm use 20
 source .venv/bin/activate
-
-# Para Windows 10+
 python scripts/build_package.py
-
-# Para Windows 8
-python scripts/build_package_win8.py
 ```
 
 ### Paso 3: Desplegar en Windows
 
 1. Copiar la carpeta del build a la PC Windows (USB, red, etc.)
-2. **Instalar Python** (solo la primera vez):
-   - Windows 10+: descargar desde https://www.python.org/downloads/
-   - Windows 8: descargar Python 3.8.20 desde https://www.python.org/downloads/release/python-3820/
+2. **Instalar Python 3.14** (solo la primera vez):
+   - Descargar desde https://www.python.org/downloads/
    - **MUY IMPORTANTE:** Marcar la casilla **"Add Python to PATH"** durante la instalacion
 3. Doble clic en `setup.bat` (solo la primera vez — instala dependencias)
 4. Doble clic en `run.bat` para iniciar el sistema
@@ -398,8 +420,15 @@ python scripts/build_package_win8.py
 | Capa | Tecnologias |
 |------|-------------|
 | **Frontend** | React 19, Vite 8, Tailwind CSS 3, Zustand 5, TanStack React Query 5, Axios, Lucide React, React Router 7, React Hot Toast, Headless UI, clsx |
-| **Backend** | Python 3.10+, FastAPI 0.135, SQLite 3 (WAL mode), python-jose (JWT), passlib + bcrypt |
+| **Backend** | Python 3.14+, FastAPI 0.135, SQLite 3 (WAL mode), python-jose (JWT), passlib + bcrypt |
 | **Herramientas** | nvm (Node 20), venv (Python), mdbtools (migracion Access) |
+
+## Migracion desde Access
+
+El script `scripts/migrate_data.py` migra datos desde la base Access original. Incluye:
+- Parsing de nombres, fechas, tipos de nacimiento y tension arterial
+- Migracion de desarrollo psicomotor desde tabla `Desarrollo_Psicomotor` (10 hitos por paciente)
+- Solo crea el usuario admin por defecto (los demas se crean manualmente)
 
 ## Datos migrados (produccion)
 
@@ -408,3 +437,4 @@ El sistema fue migrado desde una base Access con:
 - **35,917** consultas medicas
 - Antecedentes patologicos, no patologicos y heredo familiares
 - Inmunizaciones por paciente
+- Desarrollo psicomotor (10 hitos por paciente)

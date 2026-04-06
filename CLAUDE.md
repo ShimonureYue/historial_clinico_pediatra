@@ -9,7 +9,7 @@ Sistema web de historial clinico pediatrico. Migrado de Visual Basic + Access a 
 ## Stack tecnologico
 
 - **Frontend:** React 19 + Vite 8 + Tailwind CSS 3 + Zustand + TanStack React Query v5
-- **Backend:** Python 3.10+ + FastAPI 0.135 + SQLite 3 (WAL mode)
+- **Backend:** Python 3.14+ + FastAPI 0.135 + SQLite 3 (WAL mode)
 - **Auth:** JWT con python-jose, tokens de 24h
 - **Empaquetado:** Build de produccion servido por FastAPI como SPA en Windows
 
