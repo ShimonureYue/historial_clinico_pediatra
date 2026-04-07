@@ -39,7 +39,7 @@ python scripts/build_package.py
 
 - Entry point: `backend/src/main.py`
 - Todos los routers en `backend/src/routers/`
-- Prefijos API: `/api/auth`, `/api/pacientes`, `/api/consultas`, `/api/antecedentes-*`, `/api/usuarios`, `/api/tratamientos`
+- Prefijos API: `/api/auth`, `/api/pacientes`, `/api/consultas`, `/api/antecedentes-*`, `/api/usuarios`, `/api/tratamientos`, `/api/respaldos`
 - Base de datos: `backend/src/database.py` — context manager `get_db()` con auto-commit/rollback
 - Auth: `backend/src/auth.py` — `get_current_user`, `require_permission(modulo, tipo)`, `require_admin`
 
@@ -60,6 +60,7 @@ python scripts/build_package.py
 - Tablas principales: `pacientes`, `consultas`, `consultas_mediciones`, `tratamientos`
 - Antecedentes: `antecedentes_personales_patologicos`, `antecedentes_personales_no_patologicos`, `antecedentes_heredo_familiares`, `inmunizaciones`
 - Auth: `usuarios`, `permisos` (catalogo 7 modulos), `usuario_permisos`
+- Respaldos: `respaldos` (creada via CREATE IF NOT EXISTS al iniciar el router, no en migrate_structure.py)
 - Pendientes: `documentos_consulta`, `auditorias` (tablas creadas, sin implementar en backend/frontend)
 - Foreign keys con CASCADE DELETE habilitadas
 - Triggers para auto-update de `updated_at`
