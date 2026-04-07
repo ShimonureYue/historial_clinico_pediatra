@@ -85,6 +85,7 @@ historial_beto_claude/
 | **A. Heredo Familiares** | Patologias de familiares (abuelos, padres, hermanos) | `antecedentes_hf` |
 | **Usuarios** | Gestion de usuarios con permisos granulares por modulo | `usuarios` |
 | **Reportes** | Reportes e impresion (pendiente) | `reportes` |
+| **Respaldos** | Backup a S3, restaurar, instalar desde nube | Cualquier autenticado |
 
 ## Sistema de Permisos (RBAC)
 
@@ -174,6 +175,15 @@ Cada usuario tiene permisos independientes por modulo (7 modulos x 4 operaciones
 | PUT | `/api/usuarios/{id}` | Editar usuario | require_admin |
 | DELETE | `/api/usuarios/{id}` | Eliminar usuario (no a si mismo) | require_admin |
 
+### Respaldos
+| Metodo | Ruta | Descripcion | Permiso |
+|--------|------|-------------|---------|
+| GET | `/api/respaldos/status` | Verifica si S3 esta configurado | autenticado |
+| GET | `/api/respaldos/ultimo` | Info del ultimo backup | autenticado |
+| POST | `/api/respaldos/backup` | Crear snapshot + subir a S3 | autenticado |
+| POST | `/api/respaldos/restaurar` | Descargar ultimo backup y reemplazar DB | autenticado |
+| POST | `/api/respaldos/instalar` | Instalar DB desde presigned URL | autenticado |
+
 Todos los endpoints (excepto login y health) requieren JWT: `Authorization: Bearer <token>`
 
 ---
@@ -236,6 +246,7 @@ Las consultas en el historial del paciente (tanto el sidebar como la lista princ
 | `/antecedentes-no-patologicos` | AntecedentesNoPatologicosPage | antecedentes_pnp.lectura |
 | `/antecedentes-heredo-familiares` | AntecedentesHeredoFamiliaresPage | antecedentes_hf.lectura |
 | `/usuarios` | UsuariosPage | usuarios.lectura |
+| `/respaldos` | RespaldosPage | Cualquier autenticado |
 
 ---
 
@@ -438,6 +449,116 @@ El sistema fue migrado desde una base Access con:
 - Antecedentes patologicos, no patologicos y heredo familiares
 - Inmunizaciones por paciente
 - Desarrollo psicomotor (10 hitos por paciente)
+
+---
+
+## Respaldos a AWS S3
+
+El sistema incluye un modulo de respaldos que permite subir la base de datos a Amazon S3, restaurarla, e instalar una copia en otra maquina.
+
+### Funciones
+
+| Funcion | Descripcion |
+|---------|-------------|
+| **Respaldar** | Crea un snapshot seguro de la DB (WAL-safe) y lo sube a S3 encriptado |
+| **Restaurar** | Descarga el ultimo respaldo de S3 y reemplaza la DB local |
+| **Instalar desde nube** | Pega un presigned URL para instalar una DB en otra maquina (sin necesitar credenciales AWS) |
+
+### Configuracion AWS (paso a paso)
+
+#### 1. Crear bucket S3
+
+1. Entra a [AWS Console > S3](https://s3.console.aws.amazon.com/)
+2. Clic **Create bucket**
+3. Nombre: `historial-pediatrico-backups` (o el que prefieras)
+4. Region: la mas cercana a la clinica
+5. **Block all public access**: activado (default)
+6. **Default encryption**: SSE-S3 (AES-256)
+7. Clic **Create bucket**
+
+#### 2. Configurar lifecycle (retencion permanente, bajo costo)
+
+1. Entra al bucket > **Management** > **Lifecycle rules** > **Create rule**
+2. Nombre: `MoveToGlacier`
+3. Prefix: `clinic-01/`
+4. Transitions: **Standard-IA** a 90 dias, **Glacier Instant Retrieval** a 180 dias
+5. **No** habilitar expiracion (los backups se quedan para siempre)
+
+#### 3. Crear IAM user con permisos minimos
+
+1. Entra a [AWS Console > IAM > Users](https://console.aws.amazon.com/iam/home#/users)
+2. Clic **Create user**: `historial-backup-writer`
+3. **No** marcar acceso a la consola
+4. Clic **Attach policies directly** > **Create policy** con este JSON:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowUpload",
+            "Effect": "Allow",
+            "Action": ["s3:PutObject"],
+            "Resource": "arn:aws:s3:::historial-pediatrico-backups/clinic-01/*"
+        },
+        {
+            "Sid": "AllowDownloadLatest",
+            "Effect": "Allow",
+            "Action": ["s3:GetObject"],
+            "Resource": "arn:aws:s3:::historial-pediatrico-backups/clinic-01/*"
+        }
+    ]
+}
+```
+
+5. Nombre de la policy: `historial-backup-policy`
+6. Asignar la policy al usuario
+7. En **Security credentials** > **Create access key** > **Application running outside AWS**
+8. Guardar `Access Key ID` y `Secret Access Key`
+
+> **Seguridad**: Este usuario SOLO puede subir y descargar archivos en `clinic-01/`. No puede listar, borrar, ni acceder a nada mas en tu cuenta AWS.
+
+#### 4. Configurar en la PC/Mac
+
+```bash
+cp backup_config.env.example backup_config.env
+# Editar backup_config.env con las llaves del paso anterior
+```
+
+```env
+AWS_ACCESS_KEY_ID=AKIAxxxxxxxxxx
+AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxx
+S3_BACKUP_BUCKET=historial-pediatrico-backups
+S3_BACKUP_PREFIX=clinic-01
+AWS_DEFAULT_REGION=us-east-1
+```
+
+#### 5. Instalar boto3
+
+```bash
+source .venv/bin/activate
+pip install boto3
+```
+
+#### 6. Probar
+
+1. Inicia el sistema
+2. Ve al menu **Respaldos**
+3. Clic **Respaldar ahora**
+4. Verifica en AWS Console que el archivo aparece en `clinic-01/`
+
+### Flujo para cambio de maquina
+
+```
+Developer                                Doctor (nueva PC)
+─────────                                ─────────────────
+1. AWS Console > S3 > buscar backup
+2. Generar presigned URL (expira en 24h)
+3. Enviar URL por WhatsApp               4. Instalar sistema (setup.bat/setup.sh)
+                                          5. Abrir menu Respaldos
+                                          6. Pegar URL en "Instalar desde nube"
+                                          7. Reiniciar servidor → listo
+```
 
 ---
 

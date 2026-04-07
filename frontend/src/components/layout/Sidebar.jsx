@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   Users, Stethoscope, FileText, ShieldCheck,
-  ClipboardList, HeartPulse, Baby, ChevronLeft, ChevronRight, LayoutDashboard
+  ClipboardList, HeartPulse, Baby, ChevronLeft, ChevronRight, LayoutDashboard, HardDrive
 } from 'lucide-react'
 import { useState } from 'react'
 import useAuthStore from '../../store/auth'
@@ -15,6 +15,7 @@ const navItems = [
   { to: '/antecedentes-no-patologicos', label: 'A. No Patológicos', icon: HeartPulse, module: 'antecedentes_pnp' },
   { to: '/antecedentes-heredo-familiares', label: 'A. Heredo Familiares', icon: FileText, module: 'antecedentes_hf' },
   { to: '/usuarios', label: 'Usuarios', icon: Users, module: 'usuarios' },
+  { to: '/respaldos', label: 'Respaldos', icon: HardDrive, module: null },
 ]
 
 export default function Sidebar() {

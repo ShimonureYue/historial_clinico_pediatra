@@ -11,6 +11,7 @@ import UsuariosPage from './pages/UsuariosPage'
 import PacienteDetallePage from './pages/PacienteDetallePage'
 import ConsultaDetallePage from './pages/ConsultaDetallePage'
 import DashboardPage from './pages/DashboardPage'
+import RespaldosPage from './pages/RespaldosPage'
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/antecedentes-no-patologicos" element={<AntecedentesNoPatologicosPage />} />
         <Route path="/antecedentes-heredo-familiares" element={<AntecedentesHeredoFamiliaresPage />} />
         <Route path="/usuarios" element={<UsuariosPage />} />
+        <Route path="/respaldos" element={<RespaldosPage />} />
       </Route>
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

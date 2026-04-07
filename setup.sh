@@ -45,7 +45,7 @@ PYTHON_BIN="$(find_python)" || {
     exit 1
 }
 
-echo "[1/5] Python encontrado: $PYTHON_BIN ($("$PYTHON_BIN" --version 2>&1))"
+echo "[1/6] Python encontrado: $PYTHON_BIN ($("$PYTHON_BIN" --version 2>&1))"
 
 # ── 2. Crear/recrear venv ────────────────────────────────
 if [ -d ".venv" ]; then
@@ -65,18 +65,18 @@ if [ -d ".venv" ]; then
 fi
 
 if [ ! -d ".venv" ]; then
-    echo "[2/5] Creando entorno virtual..."
+    echo "[2/6] Creando entorno virtual..."
     "$PYTHON_BIN" -m venv .venv
 else
-    echo "[2/5] Entorno virtual existente OK"
+    echo "[2/6] Entorno virtual existente OK"
 fi
 
 # ── 3. Instalar dependencias Python ──────────────────────
-echo "[3/5] Instalando dependencias Python..."
+echo "[3/6] Instalando dependencias Python..."
 .venv/bin/pip install --upgrade pip -q
 .venv/bin/pip install -r backend/requirements.txt -q
 
-echo "[4/5] Verificando base de datos..."
+echo "[4/6] Verificando base de datos..."
 DB_FILE="database/historial_pediatrico.db"
 if [ ! -f "$DB_FILE" ]; then
     echo "  Base de datos no encontrada."
@@ -97,9 +97,21 @@ else
     echo "  Base de datos encontrada: $DB_FILE"
 fi
 
-echo "[5/5] Configurando frontend..."
+# ── 5. Archivo .env ──────────────────────────────────────
+echo "[5/6] Verificando archivo .env..."
+if [ ! -f ".env" ]; then
+    if [ -f ".env.example" ]; then
+        cp .env.example .env
+        echo "  .env creado desde .env.example"
+        echo "  Edita .env para configurar SECRET_KEY y credenciales AWS (respaldos S3)"
+    fi
+else
+    echo "  .env encontrado"
+fi
 
-# Crear frontend/.env si no existe
+echo "[6/6] Configurando frontend..."
+
+# Crear frontend/.env si no existe (solo VITE_API_PORT para dev)
 if [ ! -f "frontend/.env" ]; then
     echo "VITE_API_PORT=8000" > frontend/.env
     echo "  frontend/.env creado (VITE_API_PORT=8000)"

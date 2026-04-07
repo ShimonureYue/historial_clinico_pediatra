@@ -107,6 +107,13 @@ def copy_migration_scripts():
             shutil.copy2(src_file, os.path.join(scripts_dst, fname))
     print("  Scripts copiados")
 
+    # Copy .env.example and config guide
+    for fname in [".env.example", "CONFIGURACION_ENV.txt"]:
+        src_file = os.path.join(PROJECT_ROOT, fname)
+        if os.path.exists(src_file):
+            shutil.copy2(src_file, os.path.join(BUILD_DIR, fname))
+            print(f"  {fname} copiado")
+
 
 def create_windows_scripts():
     print("[6/6] Creando scripts de Windows...")
