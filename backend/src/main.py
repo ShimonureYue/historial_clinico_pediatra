@@ -29,6 +29,48 @@ def _load_dotenv():
 
 _load_dotenv()
 
+# ── Safe migrations for production DB ─────────────────────────────────────────
+def _run_migrations():
+    """Add new columns to existing tables without breaking production data."""
+    from .database import get_db
+    with get_db() as conn:
+        # Check existing columns and add missing ones
+        cols_consultas = {r["name"] for r in conn.execute("PRAGMA table_info(consultas)").fetchall()}
+        if "notas_receta" not in cols_consultas:
+            conn.execute("ALTER TABLE consultas ADD COLUMN notas_receta TEXT NULL")
+
+        cols_trat = {r["name"] for r in conn.execute("PRAGMA table_info(tratamientos)").fetchall()}
+        for col in ["medicamento", "indicaciones"]:
+            if col not in cols_trat:
+                conn.execute(f"ALTER TABLE tratamientos ADD COLUMN {col} TEXT NULL")
+
+        # Relax NOT NULL on nombre_medicamento (SQLite requires table rebuild)
+        col_info = conn.execute("PRAGMA table_info(tratamientos)").fetchall()
+        nombre_col = next((c for c in col_info if c["name"] == "nombre_medicamento"), None)
+        if nombre_col and nombre_col["notnull"]:
+            conn.executescript("""
+                CREATE TABLE tratamientos_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    consulta_id INTEGER NOT NULL REFERENCES consultas(id) ON DELETE CASCADE,
+                    nombre_medicamento TEXT NULL,
+                    presentacion TEXT NULL,
+                    dosificacion TEXT NULL,
+                    duracion TEXT NULL,
+                    via_administracion TEXT NULL,
+                    cantidad_surtir TEXT NULL,
+                    medicamento TEXT NULL,
+                    indicaciones TEXT NULL
+                );
+                INSERT INTO tratamientos_new SELECT id, consulta_id, nombre_medicamento,
+                    presentacion, dosificacion, duracion, via_administracion, cantidad_surtir,
+                    medicamento, indicaciones FROM tratamientos;
+                DROP TABLE tratamientos;
+                ALTER TABLE tratamientos_new RENAME TO tratamientos;
+                CREATE INDEX IF NOT EXISTS idx_tratamientos_consulta ON tratamientos(consulta_id);
+            """)
+
+_run_migrations()
+
 from .routers import auth_router, pacientes_router, consultas_router
 from .routers import antecedentes_pp_router, antecedentes_pnp_router, antecedentes_hf_router
 from .routers import usuarios_router, tratamientos_router, dashboard_router, respaldos_router

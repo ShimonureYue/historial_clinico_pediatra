@@ -12,12 +12,14 @@ router = APIRouter()
 
 class TratamientoCreate(BaseModel):
     consulta_id: int
-    nombre_medicamento: str
+    nombre_medicamento: Optional[str] = None
     presentacion: Optional[str] = None
     dosificacion: Optional[str] = None
     duracion: Optional[str] = None
     via_administracion: Optional[str] = None
     cantidad_surtir: Optional[str] = None
+    medicamento: Optional[str] = None
+    indicaciones: Optional[str] = None
 
 
 class TratamientoBulk(BaseModel):
@@ -41,11 +43,11 @@ def create_tratamiento(data: TratamientoCreate, user=Depends(require_permission(
         cursor = conn.execute(
             """INSERT INTO tratamientos
                (consulta_id, nombre_medicamento, presentacion, dosificacion,
-                duracion, via_administracion, cantidad_surtir)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                duracion, via_administracion, cantidad_surtir, medicamento, indicaciones)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (data.consulta_id, data.nombre_medicamento, data.presentacion,
              data.dosificacion, data.duracion, data.via_administracion,
-             data.cantidad_surtir),
+             data.cantidad_surtir, data.medicamento, data.indicaciones),
         )
         return {"id": cursor.lastrowid, "message": "Tratamiento creado"}
 
@@ -59,11 +61,11 @@ def bulk_update_tratamientos(consulta_id: int, data: List[TratamientoCreate], us
             conn.execute(
                 """INSERT INTO tratamientos
                    (consulta_id, nombre_medicamento, presentacion, dosificacion,
-                    duracion, via_administracion, cantidad_surtir)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    duracion, via_administracion, cantidad_surtir, medicamento, indicaciones)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (consulta_id, t.nombre_medicamento, t.presentacion,
                  t.dosificacion, t.duracion, t.via_administracion,
-                 t.cantidad_surtir),
+                 t.cantidad_surtir, t.medicamento, t.indicaciones),
             )
         return {"message": "Tratamientos actualizados"}
 

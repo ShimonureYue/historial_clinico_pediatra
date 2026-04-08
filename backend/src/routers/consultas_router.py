@@ -17,6 +17,7 @@ class ConsultaCreate(BaseModel):
     impresion_diagnostica: Optional[str] = None
     plan_tratamiento: Optional[str] = None
     notas_adicionales: Optional[str] = None
+    notas_receta: Optional[str] = None
     # Mediciones
     peso_kg: Optional[float] = None
     talla_cm: Optional[float] = None
@@ -56,6 +57,37 @@ def _enrich_consulta(conn, consulta: dict) -> dict:
         (consulta["id"],),
     ).fetchall()
     consulta["tratamientos"] = [dict(t) for t in tratamientos]
+
+    # Alergias from antecedentes patologicos
+    app = conn.execute(
+        "SELECT alergias FROM antecedentes_personales_patologicos WHERE paciente_id=?",
+        (consulta["paciente_id"],),
+    ).fetchone()
+    consulta["alergias"] = app["alergias"] if app and app["alergias"] else None
+
+    # Previous consultation's weight/height + tratamientos
+    prev = conn.execute(
+        """SELECT c.id, cm.peso_kg, cm.talla_cm, c.fecha_consulta
+           FROM consultas c
+           JOIN consultas_mediciones cm ON cm.consulta_id = c.id
+           WHERE c.paciente_id=? AND c.id < ? AND (cm.peso_kg IS NOT NULL OR cm.talla_cm IS NOT NULL)
+           ORDER BY c.fecha_consulta DESC, c.id DESC LIMIT 1""",
+        (consulta["paciente_id"], consulta["id"]),
+    ).fetchone()
+    if prev:
+        prev_trats = conn.execute(
+            "SELECT * FROM tratamientos WHERE consulta_id=? ORDER BY id",
+            (prev["id"],),
+        ).fetchall()
+        consulta["consulta_anterior"] = {
+            "peso_kg": prev["peso_kg"],
+            "talla_cm": prev["talla_cm"],
+            "fecha": prev["fecha_consulta"],
+            "tratamientos": [dict(t) for t in prev_trats],
+        }
+    else:
+        consulta["consulta_anterior"] = None
+
     return consulta
 
 
@@ -121,11 +153,11 @@ def create_consulta(data: ConsultaCreate, user=Depends(require_permission("consu
     with get_db() as conn:
         cursor = conn.execute(
             """INSERT INTO consultas (paciente_id, fecha_consulta, padecimiento_actual,
-               impresion_diagnostica, plan_tratamiento, notas_adicionales, creado_por)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+               impresion_diagnostica, plan_tratamiento, notas_adicionales, notas_receta, creado_por)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (data.paciente_id, data.fecha_consulta, data.padecimiento_actual,
              data.impresion_diagnostica, data.plan_tratamiento, data.notas_adicionales,
-             user["id"]),
+             data.notas_receta, user["id"]),
         )
         consulta_id = cursor.lastrowid
 
@@ -148,11 +180,11 @@ def update_consulta(consulta_id: int, data: ConsultaCreate, user=Depends(require
     with get_db() as conn:
         result = conn.execute(
             """UPDATE consultas SET paciente_id=?, fecha_consulta=?, padecimiento_actual=?,
-               impresion_diagnostica=?, plan_tratamiento=?, notas_adicionales=?
+               impresion_diagnostica=?, plan_tratamiento=?, notas_adicionales=?, notas_receta=?
                WHERE id=?""",
             (data.paciente_id, data.fecha_consulta, data.padecimiento_actual,
              data.impresion_diagnostica, data.plan_tratamiento, data.notas_adicionales,
-             consulta_id),
+             data.notas_receta, consulta_id),
         )
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Consulta no encontrada")

@@ -4,9 +4,7 @@ import os
 import sqlite3
 import tempfile
 import urllib.request
-from datetime import datetime, timezone
-from pathlib import Path
-
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -132,7 +130,7 @@ def create_backup(_user=Depends(get_current_user)):
     bucket = config["S3_BACKUP_BUCKET"]
     prefix = config["S3_BACKUP_PREFIX"]
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now()
     filename = f"historial_pediatrico_{now.strftime('%Y-%m-%d_%H%M%S')}.db"
     s3_key = f"{prefix}/{filename}"
 

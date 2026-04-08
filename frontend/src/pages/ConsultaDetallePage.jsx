@@ -5,7 +5,8 @@ import {
   ArrowLeft, Save, Stethoscope, Weight, Ruler, Thermometer,
   Wind, HeartPulse, Activity, Plus, Trash2, Pill, Calendar, User,
   ClipboardPlus, FileText, Accessibility, Printer, NotebookPen,
-  Bold, Italic, List, ListOrdered,
+  Bold, Italic, List, ListOrdered, AlertTriangle, History, X,
+  ClipboardList, Users2,
 } from 'lucide-react'
 import { jsPDF } from 'jspdf'
 import { useEditor, EditorContent } from '@tiptap/react'
@@ -112,8 +113,19 @@ const DEFAULT_EXPLORACION = {
 }
 
 const EMPTY_MED = {
-  nombre_medicamento: '', presentacion: '', dosificacion: '',
-  duracion: '', via_administracion: '', cantidad_surtir: '',
+  medicamento: '', indicaciones: '',
+}
+
+function isLegacyMed(t) {
+  return !!(t.nombre_medicamento && !t.medicamento)
+}
+
+function legacyMedLine1(t) {
+  return [t.nombre_medicamento, t.presentacion].filter(Boolean).join(' — ')
+}
+
+function legacyMedLine2(t) {
+  return [t.dosificacion, t.duracion, t.via_administracion, t.cantidad_surtir].filter(Boolean).join('   ')
 }
 
 function MiniField({ label, value, onChange, type = 'text', step, disabled, rows }) {
@@ -135,6 +147,161 @@ function MiniField({ label, value, onChange, type = 'text', step, disabled, rows
   )
 }
 
+const ANTECEDENTE_CONFIG = {
+  pp: {
+    title: 'Antecedentes Patológicos',
+    endpoint: '/antecedentes-patologicos/paciente/',
+    fields: [
+      { key: 'enfermedades_exantematicas', label: 'Enf. Exantemáticas' },
+      { key: 'alergias', label: 'Alergias' },
+      { key: 'cirugias', label: 'Cirugías' },
+      { key: 'otros', label: 'Otros' },
+    ],
+  },
+  pnp: {
+    title: 'Antecedentes No Patológicos',
+    endpoint: '/antecedentes-no-patologicos/paciente/',
+    fields: [
+      { key: 'producto_gesta', label: 'Producto Gesta' },
+      { key: 'tipo_nacimiento', label: 'Tipo Nacimiento' },
+      { key: 'peso_nacer_kg', label: 'Peso Nacer (kg)' },
+      { key: 'talla_nacer_cm', label: 'Talla Nacer (cm)' },
+      { key: 'tipo_sangre', label: 'Tipo Sangre' },
+      { key: 'apgar', label: 'Apgar' },
+      { key: 'alimentacion', label: 'Alimentación' },
+      { key: 'lugar_nacimiento', label: 'Lugar Nacimiento' },
+      { key: 'lugar_residencia', label: 'Lugar Residencia' },
+      { key: 'zoonosis', label: 'Zoonosis' },
+    ],
+    checkboxes: [
+      { key: 'seno_materno', label: 'Seno Materno' },
+      { key: 'respiro_al_nacer', label: 'Respiró al Nacer' },
+      { key: 'lloro_al_nacer', label: 'Lloró al Nacer' },
+    ],
+    desarrollo: [
+      { key: 'sonrisa_social', label: 'Sonrisa Social' },
+      { key: 'levantamiento_cabeza', label: 'Levanta Cabeza' },
+      { key: 'sento_solo', label: 'Sentó Solo' },
+      { key: 'paro_ayuda', label: 'Paró con Ayuda' },
+      { key: 'gateo', label: 'Gateo' },
+      { key: 'camino', label: 'Caminó' },
+      { key: 'inicio_lenguaje', label: 'Inicio Lenguaje' },
+      { key: 'control_esfinteres', label: 'Control Esfínteres' },
+      { key: 'inicio_jardin_ninos', label: 'Jardín de Niños' },
+      { key: 'primaria', label: 'Primaria' },
+    ],
+  },
+  hf: {
+    title: 'Antecedentes Heredo Familiares',
+    endpoint: '/antecedentes-heredo-familiares/paciente/',
+    fields: [
+      { key: 'abuelo_paterno', label: 'Abuelo Paterno' },
+      { key: 'abuela_paterna', label: 'Abuela Paterna' },
+      { key: 'abuelo_materno', label: 'Abuelo Materno' },
+      { key: 'abuela_materna', label: 'Abuela Materna' },
+      { key: 'padre', label: 'Padre' },
+      { key: 'madre', label: 'Madre' },
+      { key: 'hermanos', label: 'Hermanos' },
+    ],
+  },
+}
+
+function AntecedentesPanel({ tipo, pacienteId, onClose }) {
+  const config = ANTECEDENTE_CONFIG[tipo]
+  const { data, isLoading } = useQuery({
+    queryKey: ['antecedentes_panel', tipo, pacienteId],
+    queryFn: () => api.get(`${config.endpoint}${pacienteId}`).then((r) => r.data),
+  })
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
+      <div className="fixed top-0 left-0 z-50 h-full w-[420px] bg-white dark:bg-slate-800 shadow-2xl border-r border-slate-200 dark:border-slate-700 overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{config.title}</h3>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+            <X className="w-4 h-4 text-slate-400" />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+          </div>
+        ) : !data ? (
+          <div className="p-6 text-center">
+            <p className="text-xs text-slate-400 dark:text-slate-500">Sin antecedentes registrados para este paciente.</p>
+          </div>
+        ) : (
+          <div className="p-4 space-y-3">
+            {/* Campos texto */}
+            {config.fields.map(({ key, label }) => {
+              const val = data[key]
+              if (!val && val !== 0) return null
+              return (
+                <div key={key}>
+                  <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase">{label}</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg mt-0.5">{val}</p>
+                </div>
+              )
+            })}
+
+            {/* Checkboxes (solo PNP) */}
+            {config.checkboxes && (
+              <div className="flex flex-wrap gap-2">
+                {config.checkboxes.map(({ key, label }) => (
+                  <span key={key} className={clsx(
+                    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium',
+                    data[key] ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500'
+                  )}>
+                    {data[key] ? '✓' : '✗'} {label}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Desarrollo psicomotor (solo PNP) */}
+            {config.desarrollo && (
+              <div>
+                <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-1">Desarrollo Psicomotor (meses)</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {config.desarrollo.map(({ key, label }) => {
+                    const val = data[key]
+                    if (!val) return null
+                    return (
+                      <div key={key} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 px-2 py-1 rounded">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">{label}</span>
+                        <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-200">{val}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Inmunizaciones (solo PNP) */}
+            {data.inmunizaciones?.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-1">Inmunizaciones ({data.inmunizaciones.length})</p>
+                <div className="space-y-0.5">
+                  {data.inmunizaciones.map((imm, i) => (
+                    <div key={i} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 px-2 py-1 rounded text-[11px]">
+                      <span className="text-slate-700 dark:text-slate-200">{imm.vacuna}</span>
+                      <span className={clsx('font-medium', imm.aplicada ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-slate-500')}>
+                        {imm.dosis} {imm.fecha_aplicacion || ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
 export default function ConsultaDetallePage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -143,7 +310,7 @@ export default function ConsultaDetallePage() {
 
   const [form, setForm] = useState({
     fecha_consulta: '', padecimiento_actual: '',
-    impresion_diagnostica: '', plan_tratamiento: '', notas_adicionales: '',
+    impresion_diagnostica: '', plan_tratamiento: '', notas_adicionales: '', notas_receta: '',
     peso_kg: '', talla_cm: '', fc_bpm: '', fr_rpm: '', temperatura_c: '',
     ta_sistolica: '', ta_diastolica: '',
     cabeza: '', cuello: '', torax: '', abdomen: '',
@@ -151,6 +318,8 @@ export default function ConsultaDetallePage() {
   })
   const [tratamientos, setTratamientos] = useState([])
   const [editing, setEditing] = useState(false)
+  const [showPrevMeds, setShowPrevMeds] = useState(false)
+  const [showAntecedente, setShowAntecedente] = useState(null) // 'pp' | 'pnp' | 'hf' | null
 
   const { data: consulta, isLoading } = useQuery({
     queryKey: ['consulta', id],
@@ -166,6 +335,7 @@ export default function ConsultaDetallePage() {
         impresion_diagnostica: consulta.impresion_diagnostica || '',
         plan_tratamiento: consulta.plan_tratamiento || '',
         notas_adicionales: consulta.notas_adicionales || '',
+        notas_receta: consulta.notas_receta || '',
         peso_kg: consulta.mediciones?.peso_kg ?? '',
         talla_cm: consulta.mediciones?.talla_cm ?? '',
         fc_bpm: consulta.mediciones?.fc_bpm ?? '',
@@ -197,6 +367,7 @@ export default function ConsultaDetallePage() {
         impresion_diagnostica: strOrNull(data.impresion_diagnostica),
         plan_tratamiento: strOrNull(data.plan_tratamiento),
         notas_adicionales: strOrNull(data.notas_adicionales),
+        notas_receta: strOrNull(data.notas_receta),
         peso_kg: numOrNull(data.peso_kg),
         talla_cm: numOrNull(data.talla_cm),
         fc_bpm: numOrNull(data.fc_bpm),
@@ -214,15 +385,17 @@ export default function ConsultaDetallePage() {
       }
       await api.put(`/consultas/${id}`, cleaned)
       const tratData = tratamientos
-        .filter((t) => t.nombre_medicamento.trim())
+        .filter((t) => (t.medicamento || t.nombre_medicamento || '').trim())
         .map((t) => ({
           consulta_id: parseInt(id),
-          nombre_medicamento: t.nombre_medicamento,
+          nombre_medicamento: t.nombre_medicamento || null,
           presentacion: t.presentacion || null,
           dosificacion: t.dosificacion || null,
           duracion: t.duracion || null,
           via_administracion: t.via_administracion || null,
           cantidad_surtir: t.cantidad_surtir || null,
+          medicamento: t.medicamento || null,
+          indicaciones: t.indicaciones || null,
         }))
       await api.put(`/tratamientos/bulk/${id}`, tratData)
     },
@@ -289,6 +462,7 @@ export default function ConsultaDetallePage() {
         impresion_diagnostica: consulta.impresion_diagnostica || '',
         plan_tratamiento: consulta.plan_tratamiento || '',
         notas_adicionales: consulta.notas_adicionales || '',
+        notas_receta: consulta.notas_receta || '',
         peso_kg: consulta.mediciones?.peso_kg ?? '',
         talla_cm: consulta.mediciones?.talla_cm ?? '',
         fc_bpm: consulta.mediciones?.fc_bpm ?? '',
@@ -327,18 +501,33 @@ export default function ConsultaDetallePage() {
     const newPage = () => { doc.addPage(); y = mt }
     const checkPage = (needed) => { if (y + needed > ph - mb) newPage() }
 
-    // Row 1: Fecha | Nombre
+    // Row 1: Nombre | Fecha
     doc.setFontSize(10)
     doc.setFont('helvetica', 'bold')
-    doc.text('Fecha: ', ml, y)
-    doc.setFont('helvetica', 'normal')
-    doc.text(formatFechaReceta(form.fecha_consulta), ml + doc.getTextWidth('Fecha: '), y)
-    doc.setFont('helvetica', 'bold')
     const pacLabel = 'Paciente: '
-    doc.text(pacLabel, pw / 2, y)
+    doc.text(pacLabel, ml, y)
     doc.setFont('helvetica', 'normal')
-    doc.text(consulta.paciente_nombre || '', pw / 2 + doc.getTextWidth(pacLabel), y)
-    y += 7
+    doc.text(consulta.paciente_nombre || '', ml + doc.getTextWidth(pacLabel), y)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Fecha: ', pw / 2, y)
+    doc.setFont('helvetica', 'normal')
+    doc.text(formatFechaReceta(form.fecha_consulta), pw / 2 + doc.getTextWidth('Fecha: '), y)
+    y += 4
+    // Edad
+    if (age) {
+      const parts = []
+      if (age.years > 0) parts.push(`${age.years} ${age.years === 1 ? 'año' : 'años'}`)
+      if (age.months > 0) parts.push(`${age.months} ${age.months === 1 ? 'mes' : 'meses'}`)
+      if (age.days > 0) parts.push(`${age.days} ${age.days === 1 ? 'día' : 'días'}`)
+      if (parts.length) {
+        doc.setFont('helvetica', 'bold')
+        doc.text('Edad: ', ml, y)
+        doc.setFont('helvetica', 'normal')
+        doc.text(parts.join(' '), ml + doc.getTextWidth('Edad: '), y)
+        y += 4
+      }
+    }
+    y += 1
 
     // Row 2: Signos vitales
     doc.setFontSize(10)
@@ -360,34 +549,49 @@ export default function ConsultaDetallePage() {
       doc.text(val, vx, y)
       vx += doc.getTextWidth(val) + 5
     }
-    y += 7
+    y += 5
+
+    // Notas receta (sin label, solo el texto)
+    if (form.notas_receta) {
+      checkPage(4)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      const notasRecetaLines = doc.splitTextToSize(form.notas_receta, cw)
+      for (const line of notasRecetaLines) {
+        checkPage(4)
+        doc.text(line, ml, y)
+        y += 4
+      }
+      y += 2
+    }
 
     // Medicamentos
-    const meds = tratamientos.filter((t) => t.nombre_medicamento?.trim())
+    const meds = tratamientos.filter((t) => (t.medicamento || t.nombre_medicamento || '').trim())
     if (meds.length > 0) {
       checkPage(10)
       doc.setFontSize(10)
 
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(10)
-      const lineH = 5
-      const indent = ml + 5
+      const lineH = 4
+      const indent = ml + 4
       meds.forEach((t, idx) => {
-        // Línea 1: "N. Nombre - Presentacion"
-        const nombrePres = [
-          `${idx + 1}. ${t.nombre_medicamento}`,
-          t.presentacion ? `- ${t.presentacion}` : '',
-        ].filter(Boolean).join('  ')
-        const line1 = doc.splitTextToSize(nombrePres, cw)
-        // Línea 2: "  Dosis  Duración  Vía  Cant."
-        const detalles = [
-          t.dosificacion,
-          t.duracion,
-          t.via_administracion,
-          t.cantidad_surtir,
-        ].filter(Boolean).join('   ')
-        const line2 = detalles ? doc.splitTextToSize(detalles, cw - 5) : []
-        checkPage((line1.length + line2.length) * lineH + 3)
+        let line1, line2
+        if (t.medicamento) {
+          line1 = doc.splitTextToSize(`${idx + 1}. ${t.medicamento}`, cw)
+          line2 = t.indicaciones ? doc.splitTextToSize(t.indicaciones, cw - 4) : []
+        } else {
+          const nombrePres = [
+            `${idx + 1}. ${t.nombre_medicamento}`,
+            t.presentacion ? `- ${t.presentacion}` : '',
+          ].filter(Boolean).join('  ')
+          line1 = doc.splitTextToSize(nombrePres, cw)
+          const detalles = [
+            t.dosificacion, t.duracion, t.via_administracion, t.cantidad_surtir,
+          ].filter(Boolean).join('   ')
+          line2 = detalles ? doc.splitTextToSize(detalles, cw - 4) : []
+        }
+        checkPage((line1.length + line2.length) * lineH + 2)
         doc.setFont('helvetica', 'bold')
         line1.forEach((l, i) => doc.text(l, ml, y + i * lineH))
         y += line1.length * lineH
@@ -396,9 +600,9 @@ export default function ConsultaDetallePage() {
           line2.forEach((l, i) => doc.text(l, indent, y + i * lineH))
           y += line2.length * lineH
         }
-        y += 2
+        y += 1
       })
-      y += 3
+      y += 2
     }
 
     // Plan de tratamiento
@@ -407,30 +611,30 @@ export default function ConsultaDetallePage() {
       doc.setFontSize(10)
       doc.setFont('helvetica', 'bold')
       doc.text('Plan de tratamiento:', ml, y)
-      y += 5
+      y += 4
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(10)
       const planLines = doc.splitTextToSize(form.plan_tratamiento, cw)
       for (const line of planLines) {
-        checkPage(5)
+        checkPage(4)
         doc.text(line, ml, y)
-        y += 5
+        y += 4
       }
-      y += 3
+      y += 2
     }
 
     // Indicaciones / comentarios (rich text → líneas planas)
     const notasLines = htmlToLines(form.notas_adicionales)
     if (notasLines.length > 0) {
-      checkPage(10)
+      checkPage(4)
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(10)
       for (const line of notasLines) {
         const wrapped = doc.splitTextToSize(line, cw)
         for (const wline of wrapped) {
-          checkPage(4.5)
+          checkPage(4)
           doc.text(wline, ml, y)
-          y += 4.5
+          y += 4
         }
       }
     }
@@ -477,7 +681,44 @@ export default function ConsultaDetallePage() {
           </span>
         )}
 
+        {/* Botones antecedentes */}
+        <div className="flex items-center gap-1">
+          {[
+            { key: 'hf', icon: Users2, label: 'Heredo Fam.', color: 'text-purple-500' },
+            { key: 'pp', icon: ClipboardList, label: 'Patológicos', color: 'text-orange-500' },
+            { key: 'pnp', icon: HeartPulse, label: 'No Patológicos', color: 'text-pink-500' },
+          ].map(({ key, icon: Icon, label, color }) => (
+            <button key={key} type="button" onClick={() => setShowAntecedente(showAntecedente === key ? null : key)}
+              className={clsx(
+                'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-medium transition-colors',
+                showAntecedente === key
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'
+              )}
+              title={label}>
+              <Icon className={clsx('w-3 h-3', showAntecedente === key ? 'text-primary' : color)} />
+              <span className="hidden sm:inline">{label}</span>
+            </button>
+          ))}
+        </div>
+
         <div className="flex-1" />
+
+        {/* Alergias + consulta anterior juntos */}
+        {(consulta.alergias || consulta.consulta_anterior) && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {consulta.alergias && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[11px] font-medium">
+                <AlertTriangle className="w-3 h-3" /> {consulta.alergias}
+              </span>
+            )}
+            {consulta.consulta_anterior && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[11px] font-medium" title={`Consulta anterior: ${consulta.consulta_anterior.fecha}`}>
+                <Activity className="w-3 h-3" /> {consulta.consulta_anterior.peso_kg != null ? `${consulta.consulta_anterior.peso_kg}kg` : ''}{consulta.consulta_anterior.peso_kg != null && consulta.consulta_anterior.talla_cm != null ? ' · ' : ''}{consulta.consulta_anterior.talla_cm != null ? `${consulta.consulta_anterior.talla_cm}cm` : ''}
+              </span>
+            )}
+          </div>
+        )}
 
         <span className="text-[11px] text-slate-400 dark:text-slate-500">{consulta.fecha_consulta}</span>
 
@@ -594,6 +835,19 @@ export default function ConsultaDetallePage() {
               </div>
             </div>
 
+            {/* Notas receta */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <NotebookPen className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">Notas receta</h3>
+                <span className="text-[11px] text-slate-400 dark:text-slate-500 ml-1">— aparecen antes de los medicamentos</span>
+              </div>
+              <input value={form.notas_receta}
+                onChange={(e) => updateField('notas_receta', e.target.value)}
+                className={clsx(inputClass, disabled && 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400')}
+                disabled={disabled} placeholder="Ej: Dieta blanda, reposo relativo..." />
+            </div>
+
             {/* Medicamentos */}
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm p-4">
               <div className="flex items-center justify-between mb-2">
@@ -602,12 +856,20 @@ export default function ConsultaDetallePage() {
                   <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">Medicamentos</h3>
                   <span className="text-[12px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded-full">{tratamientos.length}</span>
                 </div>
-                {editing && (
-                  <button type="button" onClick={addMed}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 rounded-md hover:bg-green-100 transition-colors">
-                    <Plus className="w-3 h-3" /> Agregar
-                  </button>
-                )}
+                <div className="flex items-center gap-1">
+                  {consulta.consulta_anterior?.tratamientos?.length > 0 && (
+                    <button type="button" onClick={() => setShowPrevMeds(true)}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
+                      <History className="w-3 h-3" /> Anteriores
+                    </button>
+                  )}
+                  {editing && (
+                    <button type="button" onClick={addMed}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 rounded-md hover:bg-green-100 transition-colors">
+                      <Plus className="w-3 h-3" /> Agregar
+                    </button>
+                  )}
+                </div>
               </div>
 
               {tratamientos.length === 0 ? (
@@ -625,57 +887,40 @@ export default function ConsultaDetallePage() {
                 <div className="space-y-1">
                   {tratamientos.map((t, idx) => (
                     <div key={idx} className="bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-700 px-2 py-1.5 space-y-1">
-                      {/* Fila 1: Nombre - Presentación */}
-                      <div className="flex items-center gap-1">
-                        <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0">{idx + 1}.</span>
-                        <input value={t.nombre_medicamento}
-                          onChange={(e) => updateMed(idx, 'nombre_medicamento', e.target.value)}
-                          className={clsx(inputClass, 'text-[12px] py-1 font-semibold flex-[1_1_0%] min-w-0', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
-                          disabled={disabled} placeholder="Nombre del medicamento" required />
-                        <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">—</span>
-                        <input value={t.presentacion || ''}
-                          onChange={(e) => updateMed(idx, 'presentacion', e.target.value)}
-                          className={clsx(inputClass, 'text-[12px] py-1 flex-[1_1_0%] min-w-0', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
-                          disabled={disabled} placeholder="Presentación" />
-                        {editing ? (
-                          <button type="button" onClick={() => removeMed(idx)}
-                            className="p-0.5 rounded text-slate-300 dark:text-slate-500 hover:text-red-500 transition-colors shrink-0"
-                            title="Eliminar">
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        ) : <div className="w-4 shrink-0" />}
-                      </div>
-                      {/* Fila 2: Dosis  Duración  Vía  Cant. */}
-                      <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-1 pl-5">
-                        <div>
-                          <label className="block text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Dosis</label>
-                          <input value={t.dosificacion || ''}
-                            onChange={(e) => updateMed(idx, 'dosificacion', e.target.value)}
-                            className={clsx(inputClass, 'text-[12px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
-                            disabled={disabled} placeholder="1 c/8 hrs" />
+                      {isLegacyMed(t) ? (
+                        /* Campos viejos — siempre en modo texto */
+                        <div className="flex items-start gap-1">
+                          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0 pt-0.5">{idx + 1}.</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-semibold text-slate-700 dark:text-slate-200">{legacyMedLine1(t)}</p>
+                            {legacyMedLine2(t) && <p className="text-[12px] text-slate-500 dark:text-slate-400">{legacyMedLine2(t)}</p>}
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Duración</label>
-                          <input value={t.duracion || ''}
-                            onChange={(e) => updateMed(idx, 'duracion', e.target.value)}
-                            className={clsx(inputClass, 'text-[12px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
-                            disabled={disabled} placeholder="7 días" />
+                      ) : (
+                        /* Campos nuevos (2 inputs alineados) */
+                        <div className="flex items-start gap-1">
+                          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0 leading-[28px]">{idx + 1}.</span>
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center gap-1">
+                              <input value={t.medicamento || ''}
+                                onChange={(e) => updateMed(idx, 'medicamento', e.target.value)}
+                                className={clsx(inputClass, 'text-[12px] py-1 font-semibold flex-1 min-w-0', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
+                                disabled={disabled} placeholder="Nombre del medicamento" />
+                              {editing ? (
+                                <button type="button" onClick={() => removeMed(idx)}
+                                  className="p-0.5 rounded text-slate-300 dark:text-slate-500 hover:text-red-500 transition-colors shrink-0"
+                                  title="Eliminar">
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              ) : <div className="w-4 shrink-0" />}
+                            </div>
+                            <input value={t.indicaciones || ''}
+                              onChange={(e) => updateMed(idx, 'indicaciones', e.target.value)}
+                              className={clsx(inputClass, 'text-[12px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
+                              disabled={disabled} placeholder="Dosis, duración, vía, cantidad..." />
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Vía</label>
-                          <input value={t.via_administracion || ''}
-                            onChange={(e) => updateMed(idx, 'via_administracion', e.target.value)}
-                            className={clsx(inputClass, 'text-[12px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
-                            disabled={disabled} placeholder="Oral" />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase mb-0.5">Cant.</label>
-                          <input value={t.cantidad_surtir || ''}
-                            onChange={(e) => updateMed(idx, 'cantidad_surtir', e.target.value)}
-                            className={clsx(inputClass, 'text-[12px] py-1', disabled && 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500')}
-                            disabled={disabled} placeholder="21 tab" />
-                        </div>
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -711,6 +956,53 @@ export default function ConsultaDetallePage() {
 
         </div>
       </form>
+
+      {/* Panel lateral izquierdo: antecedentes */}
+      {showAntecedente && <AntecedentesPanel tipo={showAntecedente} pacienteId={consulta.paciente_id} onClose={() => setShowAntecedente(null)} />}
+
+      {/* Panel lateral derecho: medicamentos consulta anterior */}
+      {showPrevMeds && consulta.consulta_anterior?.tratamientos && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setShowPrevMeds(false)} />
+          <div className="fixed top-0 right-0 z-50 h-full w-[480px] bg-white dark:bg-slate-800 shadow-2xl border-l border-slate-200 dark:border-slate-700 overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Medicamentos anteriores</h3>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500">Consulta del {consulta.consulta_anterior.fecha}</p>
+              </div>
+              <button onClick={() => setShowPrevMeds(false)}
+                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+            <div className="p-4 space-y-2">
+              {consulta.consulta_anterior.tratamientos.map((t, idx) => (
+                <div key={idx} className="bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-700 p-2.5">
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 shrink-0">{idx + 1}.</span>
+                    <div className="min-w-0">
+                      {t.medicamento ? (
+                        <>
+                          <p className="text-[12px] font-semibold text-slate-700 dark:text-slate-200">{t.medicamento}</p>
+                          {t.indicaciones && <p className="text-[12px] text-slate-500 dark:text-slate-400">{t.indicaciones}</p>}
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-[12px] font-semibold text-slate-700 dark:text-slate-200">{legacyMedLine1(t)}</p>
+                          {legacyMedLine2(t) && <p className="text-[12px] text-slate-500 dark:text-slate-400">{legacyMedLine2(t)}</p>}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {consulta.consulta_anterior.tratamientos.length === 0 && (
+                <p className="text-xs text-slate-400 dark:text-slate-500 text-center py-4">Sin medicamentos en la consulta anterior</p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

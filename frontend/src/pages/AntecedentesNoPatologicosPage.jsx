@@ -104,8 +104,8 @@ export default function AntecedentesNoPatologicosPage() {
         zoonosis: antData.zoonosis || '',
         lugar_nacimiento: antData.lugar_nacimiento || '',
         lugar_residencia: antData.lugar_residencia || '',
-        respiro_al_nacer: antData.respiro_al_nacer,
-        lloro_al_nacer: antData.lloro_al_nacer,
+        respiro_al_nacer: antData.respiro_al_nacer ? 1 : 0,
+        lloro_al_nacer: antData.lloro_al_nacer ? 1 : 0,
         desarrollo_psicomotor: antData.desarrollo_psicomotor || '',
         sonrisa_social: antData.sonrisa_social || '',
         levantamiento_cabeza: antData.levantamiento_cabeza || '',
@@ -135,8 +135,8 @@ export default function AntecedentesNoPatologicosPage() {
         peso_nacer_kg: n(data.peso_nacer_kg),
         talla_nacer_cm: n(data.talla_nacer_cm),
         inicio_formula_meses: n(data.inicio_formula_meses),
-        respiro_al_nacer: data.respiro_al_nacer == null ? null : Number(data.respiro_al_nacer),
-        lloro_al_nacer: data.lloro_al_nacer == null ? null : Number(data.lloro_al_nacer),
+        respiro_al_nacer: data.respiro_al_nacer ? 1 : 0,
+        lloro_al_nacer: data.lloro_al_nacer ? 1 : 0,
       }
       return existingId
         ? api.put(`/antecedentes-no-patologicos/${existingId}`, { ...cleaned, inmunizaciones })

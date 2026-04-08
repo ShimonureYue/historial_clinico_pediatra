@@ -437,7 +437,7 @@ function ConsultasSidebar({ pacienteId }) {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
-  const [newForm, setNewForm] = useState({ fecha_consulta: new Date().toISOString().split('T')[0], padecimiento_actual: '' })
+  const [newForm, setNewForm] = useState({ fecha_consulta: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0], padecimiento_actual: '' })
 
   const { data: consultas = [], isLoading } = useQuery({
     queryKey: ['consultas', 'paciente', pacienteId],
@@ -471,7 +471,7 @@ function ConsultasSidebar({ pacienteId }) {
             </div>
           </div>
           {canWrite && (
-            <button onClick={() => { setNewForm({ fecha_consulta: new Date().toISOString().split('T')[0], padecimiento_actual: '' }); setShowForm(true) }}
+            <button onClick={() => { setNewForm({ fecha_consulta: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0], padecimiento_actual: '' }); setShowForm(true) }}
               className="inline-flex items-center gap-1.5 px-3 py-2 bg-primary text-white text-sm font-medium rounded-xl shadow-lg shadow-primary/30 hover:bg-primary-dark transition-all">
               <Plus className="w-4 h-4" /> Nueva
             </button>
@@ -550,7 +550,7 @@ function HistorialConsultas({ pacienteId }) {
   const [showForm, setShowForm] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [newForm, setNewForm] = useState({ fecha_consulta: new Date().toISOString().split('T')[0], padecimiento_actual: '' })
+  const [newForm, setNewForm] = useState({ fecha_consulta: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0], padecimiento_actual: '' })
 
   const { data: consultas = [], isLoading } = useQuery({
     queryKey: ['consultas', 'paciente', pacienteId],
@@ -623,7 +623,7 @@ function HistorialConsultas({ pacienteId }) {
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary bg-white dark:bg-slate-700 dark:text-slate-100" />
         </div>
         {canWrite && (
-          <button onClick={() => { setNewForm({ fecha_consulta: new Date().toISOString().split('T')[0], padecimiento_actual: '' }); setShowForm(true) }}
+          <button onClick={() => { setNewForm({ fecha_consulta: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0], padecimiento_actual: '' }); setShowForm(true) }}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-xl shadow-lg shadow-primary/30 hover:bg-primary-dark transition-all whitespace-nowrap">
             <Plus className="w-4 h-4" /> Nueva Consulta
           </button>
@@ -956,8 +956,8 @@ const TabNoPatologicos = forwardRef(function TabNoPatologicos({ pacienteId, edit
         zoonosis: data.zoonosis || '',
         lugar_nacimiento: data.lugar_nacimiento || '',
         lugar_residencia: data.lugar_residencia || '',
-        respiro_al_nacer: data.respiro_al_nacer,
-        lloro_al_nacer: data.lloro_al_nacer,
+        respiro_al_nacer: data.respiro_al_nacer ? 1 : 0,
+        lloro_al_nacer: data.lloro_al_nacer ? 1 : 0,
         desarrollo_psicomotor: data.desarrollo_psicomotor || '',
         sonrisa_social: data.sonrisa_social ?? '',
         levantamiento_cabeza: data.levantamiento_cabeza ?? '',
@@ -1002,8 +1002,8 @@ const TabNoPatologicos = forwardRef(function TabNoPatologicos({ pacienteId, edit
         peso_nacer_kg: n(form.peso_nacer_kg),
         talla_nacer_cm: n(form.talla_nacer_cm),
         inicio_formula_meses: n(form.inicio_formula_meses),
-        respiro_al_nacer: form.respiro_al_nacer == null ? null : Number(form.respiro_al_nacer),
-        lloro_al_nacer: form.lloro_al_nacer == null ? null : Number(form.lloro_al_nacer),
+        respiro_al_nacer: form.respiro_al_nacer ? 1 : 0,
+        lloro_al_nacer: form.lloro_al_nacer ? 1 : 0,
         inmunizaciones,
       }
       await saveMutation.mutateAsync(payload)
