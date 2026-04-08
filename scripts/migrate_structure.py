@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS consultas (
     impresion_diagnostica   TEXT    NULL,
     plan_tratamiento        TEXT    NULL,
     notas_adicionales       TEXT    NULL,
+    notas_receta            TEXT    NULL,
     creado_por              INTEGER REFERENCES usuarios(id),
     created_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -192,12 +193,14 @@ CREATE TABLE IF NOT EXISTS antecedentes_heredo_familiares (
 CREATE TABLE IF NOT EXISTS tratamientos (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     consulta_id         INTEGER NOT NULL REFERENCES consultas(id) ON DELETE CASCADE,
-    nombre_medicamento  TEXT    NOT NULL,
+    nombre_medicamento  TEXT    NULL,
     presentacion        TEXT    NULL,
     dosificacion        TEXT    NULL,
     duracion            TEXT    NULL,
     via_administracion  TEXT    NULL,
-    cantidad_surtir     TEXT    NULL
+    cantidad_surtir     TEXT    NULL,
+    medicamento         TEXT    NULL,
+    indicaciones        TEXT    NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_tratamientos_consulta
