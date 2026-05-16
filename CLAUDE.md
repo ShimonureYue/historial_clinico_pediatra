@@ -8,7 +8,7 @@ Sistema web de historial clinico pediatrico. Migrado de Visual Basic + Access a 
 
 ## Stack tecnologico
 
-- **Frontend:** React 19 + Vite 8 + Tailwind CSS 3 + Zustand + TanStack React Query v5
+- **Frontend:** React 19 + Vite 8 + Tailwind CSS 3 + Zustand + TanStack React Query v5 + Tiptap (rich text)
 - **Backend:** Python 3.14+ + FastAPI 0.135 + SQLite 3 (WAL mode)
 - **Auth:** JWT con python-jose, tokens de 24h
 - **Empaquetado:** Build de produccion servido por FastAPI como SPA en Windows
@@ -39,9 +39,10 @@ python scripts/build_package.py
 
 - Entry point: `backend/src/main.py`
 - Todos los routers en `backend/src/routers/`
-- Prefijos API: `/api/auth`, `/api/pacientes`, `/api/consultas`, `/api/antecedentes-*`, `/api/usuarios`, `/api/tratamientos`, `/api/respaldos`
+- Prefijos API: `/api/auth`, `/api/pacientes`, `/api/consultas`, `/api/antecedentes-*`, `/api/usuarios`, `/api/tratamientos`, `/api/respaldos`, `/api/plantillas`, `/api/dashboard`
 - Base de datos: `backend/src/database.py` — context manager `get_db()` con auto-commit/rollback
 - Auth: `backend/src/auth.py` — `get_current_user`, `require_permission(modulo, tipo)`, `require_admin`
+- Migraciones in-place: `_run_migrations()` en `main.py` corre al arranque para agregar columnas/tablas nuevas sin romper la DB de produccion (idempotente, con `PRAGMA table_info` + `ALTER TABLE` o `CREATE TABLE IF NOT EXISTS`)
 
 ### Frontend (React)
 
@@ -51,7 +52,9 @@ python scripts/build_package.py
 - API: Axios en `lib/api.js` con interceptores JWT y redirect en 401
 - Permisos: Hook `useModulePermission(modulo)` → `{ canRead, canWrite, canUpdate, canDelete }`
 - Datos: TanStack React Query v5 con queryKeys como `['pacientes', search, page]`
-- Componentes reutilizables: `PatientSearchSelect` (búsqueda de pacientes con autocomplete)
+- Componentes reutilizables:
+  - `PatientSearchSelect` — búsqueda de pacientes con autocomplete
+  - `RichTextEditor` — editor WYSIWYG basado en Tiptap (StarterKit), con toolbar de negrita/cursiva/listas. Usado en notas de receta y notas adicionales
 
 ### Base de datos (SQLite)
 
@@ -61,6 +64,7 @@ python scripts/build_package.py
 - Antecedentes: `antecedentes_personales_patologicos`, `antecedentes_personales_no_patologicos`, `antecedentes_heredo_familiares`, `inmunizaciones`
 - Auth: `usuarios`, `permisos` (catalogo 7 modulos), `usuario_permisos`
 - Respaldos: `respaldos` (creada via CREATE IF NOT EXISTS al iniciar el router, no en migrate_structure.py)
+- Plantillas de receta: `plantillas_receta` (creada via `_run_migrations()` en `main.py`, no en migrate_structure.py)
 - Pendientes: `documentos_consulta`, `auditorias` (tablas creadas, sin implementar en backend/frontend)
 - Foreign keys con CASCADE DELETE habilitadas
 - Triggers para auto-update de `updated_at`
@@ -98,7 +102,10 @@ Cada tipo de antecedente es 1:1 con paciente (`paciente_id UNIQUE`). El frontend
 Son hijas de `antecedentes_personales_no_patologicos`. Se envian como array nested en el JSON del antecedente. El backend hace DELETE + INSERT de todas las inmunizaciones en cada update (replace pattern).
 
 ### Tratamientos
-Similares a inmunizaciones pero vinculados a `consultas`. Endpoint bulk `PUT /api/tratamientos/bulk/{consulta_id}` reemplaza todos los tratamientos de una consulta.
+Similares a inmunizaciones pero vinculados a `consultas`. Endpoint bulk `PUT /api/tratamientos/bulk/{consulta_id}` reemplaza todos los tratamientos de una consulta. La columna `nombre_medicamento` fue relajada a NULL (ver `_run_migrations()` en main.py); el modelo actual usa `medicamento` + `indicaciones` como campos simplificados.
+
+### Plantillas de receta
+CRUD sencillo en `/api/plantillas` (solo requiere `get_current_user`, sin permisos granulares). Cada plantilla guarda `nombre`, `notas_receta`, `notas_adicionales` (HTML del RichTextEditor). Desde `ConsultaDetallePage` se pueden cargar/aplicar a la consulta actual. Item visible en Sidebar para todos los usuarios autenticados (`module: null`).
 
 ## Convenciones de codigo
 

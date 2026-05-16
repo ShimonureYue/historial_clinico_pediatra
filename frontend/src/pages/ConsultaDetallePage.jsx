@@ -5,93 +5,31 @@ import {
   ArrowLeft, Save, Stethoscope, Weight, Ruler, Thermometer,
   Wind, HeartPulse, Activity, Plus, Trash2, Pill, Calendar, User,
   ClipboardPlus, FileText, Accessibility, Printer, NotebookPen,
-  Bold, Italic, List, ListOrdered, AlertTriangle, History, X,
-  ClipboardList, Users2,
+  AlertTriangle, History, X,
+  ClipboardList, Users2, FileStack,
 } from 'lucide-react'
 import { jsPDF } from 'jspdf'
-import { useEditor, EditorContent } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
 import api from '../lib/api'
 import useModulePermission from '../hooks/useModulePermission'
+import RichTextEditor from '../components/RichTextEditor'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
-
-/* ─── Rich Text Editor ─── */
-function RichTextEditor({ value, onChange, disabled }) {
-  const editor = useEditor({
-    extensions: [StarterKit],
-    content: value || '',
-    editable: !disabled,
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
-  })
-
-  // Sync editable state when disabled changes
-  useEffect(() => {
-    if (editor) editor.setEditable(!disabled)
-  }, [editor, disabled])
-
-  // Sync content when value changes externally (e.g. cancel)
-  useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value || '')
-    }
-  }, [value]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!editor) return null
-
-  return (
-    <div className={clsx(
-      'rounded-lg border text-xs transition-colors',
-      disabled
-        ? 'border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800'
-        : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary'
-    )}>
-      {!disabled && (
-        <div className="flex items-center gap-0.5 px-2 py-1 border-b border-slate-100 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 rounded-t-lg">
-          {[
-            { action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive('bold'), Icon: Bold, title: 'Negrita' },
-            { action: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive('italic'), Icon: Italic, title: 'Cursiva' },
-            { action: () => editor.chain().focus().toggleBulletList().run(), active: editor.isActive('bulletList'), Icon: List, title: 'Lista' },
-            { action: () => editor.chain().focus().toggleOrderedList().run(), active: editor.isActive('orderedList'), Icon: ListOrdered, title: 'Lista numerada' },
-          ].map(({ action, active, Icon, title }) => (
-            <button key={title} type="button" onClick={action} title={title}
-              className={clsx('p-1 rounded transition-colors', active
-                ? 'bg-primary text-white'
-                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600')}>
-              <Icon className="w-3 h-3" />
-            </button>
-          ))}
-        </div>
-      )}
-      <EditorContent
-        editor={editor}
-        className={clsx(
-          'px-2 py-1.5 min-h-[80px]',
-          // Match textarea font/color style
-          'text-xs text-slate-800 dark:text-slate-100',
-          disabled && 'text-slate-500 dark:text-slate-400',
-          // ProseMirror reset
-          '[&_.ProseMirror]:outline-none',
-          '[&_.ProseMirror]:text-xs [&_.ProseMirror]:leading-relaxed',
-          '[&_.ProseMirror_p]:m-0 [&_.ProseMirror_p+p]:mt-1',
-          '[&_.ProseMirror_ul]:my-0.5 [&_.ProseMirror_ul]:pl-4 [&_.ProseMirror_ul]:list-disc',
-          '[&_.ProseMirror_ol]:my-0.5 [&_.ProseMirror_ol]:pl-4 [&_.ProseMirror_ol]:list-decimal',
-          '[&_.ProseMirror_li]:my-0 [&_.ProseMirror_li]:leading-relaxed [&_.ProseMirror_li]:list-item',
-          '[&_.ProseMirror_strong]:font-semibold',
-          '[&_.ProseMirror_em]:italic',
-        )}
-      />
-    </div>
-  )
-}
 
 /* ─── HTML to plain text lines (for PDF) ─── */
 function htmlToLines(html) {
   if (!html) return []
-  // Convert list items to bullet lines first
-  const text = html
-    .replace(/<li[^>]*>/gi, '\x00• ')   // mark list item start
-    .replace(/<\/li>/gi, '\x00')         // mark list item end
+  // Replace ordered lists: number each <li> inside <ol>
+  let text = html.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_m, inner) => {
+    let n = 0
+    return inner.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_m2, item) => {
+      n++
+      return `\x00${n}. ${item}\x00`
+    })
+  })
+  // Remaining <li> come from <ul> → bullets
+  text = text
+    .replace(/<li[^>]*>/gi, '\x00• ')
+    .replace(/<\/li>/gi, '\x00')
     .replace(/<br\s*\/?>/gi, '\x00')
     .replace(/<\/p>/gi, '\x00').replace(/<p[^>]*>/gi, '')
     .replace(/<\/?(strong|b|em|i|ul|ol)[^>]*>/gi, '')
@@ -320,10 +258,16 @@ export default function ConsultaDetallePage() {
   const [editing, setEditing] = useState(false)
   const [showPrevMeds, setShowPrevMeds] = useState(false)
   const [showAntecedente, setShowAntecedente] = useState(null) // 'pp' | 'pnp' | 'hf' | null
+  const [showPlantillas, setShowPlantillas] = useState(false)
 
   const { data: consulta, isLoading } = useQuery({
     queryKey: ['consulta', id],
     queryFn: () => api.get(`/consultas/${id}`).then((r) => r.data),
+  })
+
+  const { data: plantillas = [] } = useQuery({
+    queryKey: ['plantillas'],
+    queryFn: () => api.get('/plantillas').then((r) => r.data),
   })
 
   useEffect(() => {
@@ -414,6 +358,22 @@ export default function ConsultaDetallePage() {
 
   const handleSubmit = (e) => { e.preventDefault(); saveMutation.mutate(form) }
   const updateField = (f, v) => setForm((prev) => ({ ...prev, [f]: v }))
+
+  const aplicarPlantilla = (plantilla) => {
+    const stripHtml = (s) => (s || '').replace(/<[^>]*>/g, '').trim()
+    const hayContenido = stripHtml(form.notas_receta) || stripHtml(form.notas_adicionales)
+    if (hayContenido && !confirm('Esto reemplazara las notas y comentarios actuales. Continuar?')) {
+      setShowPlantillas(false)
+      return
+    }
+    setForm((prev) => ({
+      ...prev,
+      notas_receta: plantilla.notas_receta || '',
+      notas_adicionales: plantilla.notas_adicionales || '',
+    }))
+    setShowPlantillas(false)
+    toast.success(`Plantilla "${plantilla.nombre}" aplicada`)
+  }
 
   const addMed = () => setTratamientos((prev) => [...prev, { ...EMPTY_MED }])
   const removeMed = (idx) => setTratamientos((prev) => prev.filter((_, i) => i !== idx))
@@ -551,16 +511,19 @@ export default function ConsultaDetallePage() {
     }
     y += 5
 
-    // Notas receta (sin label, solo el texto)
-    if (form.notas_receta) {
+    // Notas receta (sin label, solo el texto, soporta rich text)
+    const notasRecetaLines = htmlToLines(form.notas_receta)
+    if (notasRecetaLines.length > 0) {
       checkPage(4)
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(10)
-      const notasRecetaLines = doc.splitTextToSize(form.notas_receta, cw)
       for (const line of notasRecetaLines) {
-        checkPage(4)
-        doc.text(line, ml, y)
-        y += 4
+        const wrapped = doc.splitTextToSize(line, cw)
+        for (const wline of wrapped) {
+          checkPage(4)
+          doc.text(wline, ml, y)
+          y += 4
+        }
       }
       y += 2
     }
@@ -841,11 +804,36 @@ export default function ConsultaDetallePage() {
                 <NotebookPen className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                 <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">Notas receta</h3>
                 <span className="text-[11px] text-slate-400 dark:text-slate-500 ml-1">— aparecen antes de los medicamentos</span>
+                {editing && plantillas.length > 0 && (
+                  <div className="ml-auto relative">
+                    <button type="button" onClick={() => setShowPlantillas((v) => !v)}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors">
+                      <FileStack className="w-3 h-3" /> Plantillas
+                    </button>
+                    {showPlantillas && (
+                      <>
+                        <div className="fixed inset-0 z-30" onClick={() => setShowPlantillas(false)} />
+                        <div className="absolute right-0 top-full mt-1 z-40 w-64 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                          <div className="max-h-64 overflow-y-auto">
+                            {plantillas.map((p) => (
+                              <button key={p.id} type="button" onClick={() => aplicarPlantilla(p)}
+                                className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 border-b border-slate-100 dark:border-slate-700 last:border-0">
+                                <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{p.nombre}</p>
+                                {p.notas_receta && <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{p.notas_receta.replace(/<[^>]*>/g, ' ').trim()}</p>}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
-              <input value={form.notas_receta}
-                onChange={(e) => updateField('notas_receta', e.target.value)}
-                className={clsx(inputClass, disabled && 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400')}
-                disabled={disabled} placeholder="Ej: Dieta blanda, reposo relativo..." />
+              <RichTextEditor
+                value={form.notas_receta}
+                onChange={(v) => updateField('notas_receta', v)}
+                disabled={disabled}
+              />
             </div>
 
             {/* Medicamentos */}

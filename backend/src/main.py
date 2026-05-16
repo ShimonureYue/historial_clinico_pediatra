@@ -44,6 +44,18 @@ def _run_migrations():
             if col not in cols_trat:
                 conn.execute(f"ALTER TABLE tratamientos ADD COLUMN {col} TEXT NULL")
 
+        # Plantillas de receta (nueva tabla, no toca existentes)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS plantillas_receta (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre            TEXT    NOT NULL,
+                notas_receta      TEXT    NULL,
+                notas_adicionales TEXT    NULL,
+                created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         # Relax NOT NULL on nombre_medicamento (SQLite requires table rebuild)
         col_info = conn.execute("PRAGMA table_info(tratamientos)").fetchall()
         nombre_col = next((c for c in col_info if c["name"] == "nombre_medicamento"), None)
@@ -74,6 +86,7 @@ _run_migrations()
 from .routers import auth_router, pacientes_router, consultas_router
 from .routers import antecedentes_pp_router, antecedentes_pnp_router, antecedentes_hf_router
 from .routers import usuarios_router, tratamientos_router, dashboard_router, respaldos_router
+from .routers import plantillas_router
 
 app = FastAPI(
     title="Historia Clínica Pediátrica API",
@@ -98,6 +111,7 @@ app.include_router(usuarios_router.router, prefix="/api/usuarios", tags=["Usuari
 app.include_router(tratamientos_router.router, prefix="/api/tratamientos", tags=["Tratamientos"])
 app.include_router(dashboard_router.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(respaldos_router.router, prefix="/api/respaldos", tags=["Respaldos"])
+app.include_router(plantillas_router.router, prefix="/api/plantillas", tags=["Plantillas"])
 
 
 @app.get("/api/health")
