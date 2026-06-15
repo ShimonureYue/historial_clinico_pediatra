@@ -225,7 +225,7 @@ function AntecedentesPanel({ tipo, pacienteId, onClose }) {
                   {data.inmunizaciones.map((imm, i) => (
                     <div key={i} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 px-2 py-1 rounded text-[11px]">
                       <span className="text-slate-700 dark:text-slate-200">{imm.vacuna}</span>
-                      <span className={clsx('font-medium', imm.aplicada ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-slate-500')}>
+                      <span className="font-medium text-green-600 dark:text-green-400">
                         {imm.dosis} {imm.fecha_aplicacion || ''}
                       </span>
                     </div>

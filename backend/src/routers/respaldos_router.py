@@ -124,7 +124,7 @@ def create_backup(_user=Depends(get_current_user)):
     """Create a SQLite snapshot and upload to S3."""
     config = _load_config()
     if not config:
-        raise HTTPException(status_code=400, detail="Backup S3 no configurado. Crea el archivo backup_config.env")
+        raise HTTPException(status_code=400, detail="Backup S3 no configurado. Configura las variables AWS en el archivo .env")
 
     s3 = _get_s3_client(config)
     bucket = config["S3_BACKUP_BUCKET"]
