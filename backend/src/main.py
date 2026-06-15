@@ -1,7 +1,7 @@
 """FastAPI application entry point."""
 
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -22,6 +22,9 @@ def _load_dotenv():
                     if "=" in line:
                         key, _, value = line.partition("=")
                         key, value = key.strip(), value.strip()
+                        # Strip matching surrounding quotes (common in .env files)
+                        if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+                            value = value[1:-1]
                         if key and key not in os.environ:
                             os.environ[key] = value
             break  # only load the first file found
@@ -126,10 +129,22 @@ STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.pat
 if os.path.isdir(STATIC_DIR):
     app.mount("/assets", StaticFiles(directory=os.path.join(STATIC_DIR, "assets")), name="assets")
 
+    STATIC_ROOT = os.path.abspath(STATIC_DIR)
+    INDEX_FILE = os.path.join(STATIC_ROOT, "index.html")
+
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        """Serve the SPA index.html for any non-API route."""
-        file_path = os.path.join(STATIC_DIR, full_path)
-        if os.path.isfile(file_path):
-            return FileResponse(file_path)
-        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+        """Serve the SPA index.html for any non-API route.
+
+        Falls back to index.html so client-side routing works. Static files are
+        only served when the resolved path stays inside STATIC_ROOT (prevents
+        path traversal like '../../etc/passwd').
+        """
+        # Unmatched API routes should 404 as JSON, not return the SPA HTML.
+        if full_path == "api" or full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="No encontrado")
+
+        requested = os.path.normpath(os.path.join(STATIC_ROOT, full_path))
+        if (requested == STATIC_ROOT or requested.startswith(STATIC_ROOT + os.sep)) and os.path.isfile(requested):
+            return FileResponse(requested)
+        return FileResponse(INDEX_FILE)
