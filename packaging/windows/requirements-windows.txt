@@ -1,0 +1,50 @@
+# Dependencias exactas que lleva el instalador de Windows (Python 3.14, win_amd64).
+#
+# Se instalan con --no-deps, asi que esta lista debe incluir TODO (dependencias
+# transitivas incluidas). Pip no puede resolverlas desde macOS porque evalua los
+# marcadores de plataforma de la Mac (ej. click necesita colorama solo en Windows).
+#
+# Las versiones del backend son las mismas que en .venv (las probadas). Al
+# actualizar backend/requirements.txt, actualiza tambien aqui; build_installer.py
+# avisa si los pines "==" no coinciden.
+#
+# passlib, bcrypt y python-multipart estan en backend/requirements.txt pero el
+# codigo no los usa, por eso no se incluyen.
+
+# ── Backend ───────────────────────────────────────────────
+annotated-doc==0.0.4
+annotated-types==0.7.0
+anyio==4.13.0
+boto3==1.42.83
+botocore==1.42.83
+cffi==2.0.0
+click==8.3.2
+colorama==0.4.6
+cryptography==46.0.6
+ecdsa==0.19.2
+fastapi==0.135.3
+h11==0.16.0
+idna==3.11
+jmespath==1.1.0
+pyasn1==0.6.3
+pycparser==3.0
+pydantic==2.12.5
+pydantic_core==2.41.5
+python-dateutil==2.9.0.post0
+python-jose==3.5.0
+rsa==4.9.1
+s3transfer==0.16.0
+six==1.17.0
+starlette==1.0.0
+typing-inspection==0.4.2
+typing_extensions==4.15.0
+urllib3==2.6.3
+uvicorn==0.43.0
+
+# ── Ventana de escritorio (pywebview + WebView2) ──────────
+# proxy_tools (dependencia de pywebview) solo existe como codigo fuente;
+# build_installer.py lo descarga y lo copia aparte.
+bottle==0.13.4
+clr_loader==0.3.1
+pythonnet==3.2.1
+pywebview==6.2.1

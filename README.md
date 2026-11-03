@@ -321,7 +321,88 @@ Acceder en: `http://localhost:5173`
 
 ---
 
-## Empaquetar para Windows
+## Instalador de Windows (programa de escritorio)
+
+Genera `build/HistorialPediatrico-Setup-<version>.exe`, que instala el sistema como un programa normal de Windows 10/11: icono en el escritorio y en el menu Inicio, y ventana propia sin navegador. Incluye Python 3.14, asi que la PC de la clinica no necesita Python, Node ni internet.
+
+```bash
+brew install makensis              # solo la primera vez
+source ~/.nvm/nvm.sh && nvm use 20
+make installer                     # o: make installer VERSION=2026.11.3 (default: fecha de hoy)
+```
+
+| Pieza | Archivo |
+|-------|---------|
+| Lanzador: ventana (pywebview + WebView2) y servidor en el mismo proceso | `packaging/windows/launcher.pyw` |
+| Script del instalador (NSIS) | `packaging/windows/installer.nsi` |
+| Dependencias exactas para Windows | `packaging/windows/requirements-windows.txt` |
+| Icono (generado de `frontend/public/favicon.svg`) | `packaging/windows/icon.ico` |
+| Build | `scripts/build_installer.py` |
+
+### Como queda en Windows
+
+- **Programa:** `%LOCALAPPDATA%\Programs\HistorialPediatrico\`. Se reemplaza completo al actualizar y no pide permisos de administrador.
+- **Datos:** `%LOCALAPPDATA%\HistorialPediatrico\`. El instalador nunca los toca; en el menu Inicio hay un acceso directo "Datos y respaldos".
+  - `database\historial_pediatrico.db`
+  - `database\backups\diarios\` — respaldo automatico al abrir el programa, uno por dia (se conservan 14)
+  - `config.env` — `SECRET_KEY` (generada en la primera apertura) y llaves de S3
+  - `logs\app.log` — diagnostico
+- La ventana usa WebView2, el motor de Edge que ya trae Windows 11. Al cerrarla se detiene el servidor.
+- La receta PDF se abre en una ventana aparte con visor e impresion; el clic derecho (copiar, pegar, corrector) y Ctrl+P funcionan como en el navegador.
+
+### Primera instalacion en un equipo
+
+1. Ejecutar el Setup.
+2. Al abrirlo por primera vez pide el respaldo `.db` (descargado de S3 o en una USB). Si junto al `.db` hay un `.env`, toma de ahi las llaves de S3. Tambien lo busca un nivel arriba, para cuando se copio la carpeta completa del sistema anterior (`.env` + `database\historial_pediatrico.db`).
+
+### Actualizar
+
+Ejecutar el Setup nuevo encima. Si el programa esta abierto, pide cerrarlo. La base y los respaldos no se tocan; las migraciones de `_run_migrations()` se aplican al abrir.
+
+### Probar sin Windows
+
+```bash
+python packaging/windows/launcher.pyw --smoke-test --data-dir /tmp/hc --db database/historial_pediatrico.db
+```
+
+Arranca el servidor sin ventana, prueba health, login y frontend, y sale.
+
+### Dependencias
+
+`requirements-windows.txt` se instala con `--no-deps` porque pip no puede resolver desde macOS los marcadores de Windows. Por eso lista todas las dependencias transitivas con version exacta. El build avisa si un pin difiere de `backend/requirements.txt`.
+
+### Proxima mejora: actualizacion remota (pendiente)
+
+Hoy, para actualizar, hay que llevar el Setup nuevo a la clinica (USB) y ejecutarlo. La idea es que el programa se actualice solo desde S3, reutilizando el bucket y las llaves que ya usa para los respaldos. La PC de la clinica solo hace descargas, asi que no hay que abrir puertos ni conectarse a ella.
+
+**Flujo propuesto**
+
+1. **Publicar (macOS):** `make release` genera el instalador y sube a S3:
+   - `updates/HistorialPediatrico-Setup-<version>.exe`
+   - `updates/latest.json`, por ejemplo `{"version": "2026.12.1", "archivo": "HistorialPediatrico-Setup-2026.12.1.exe", "sha256": "...", "notas": "..."}`
+2. **Revisar (lanzador):** al abrir el programa, como maximo una vez al dia y sin retrasar el arranque, descarga `updates/latest.json` con las llaves de `config.env`. Si la version es mayor que la de `app/version.txt`, avisa: "Hay una actualizacion (2026.12.1). ¿Instalarla al cerrar el programa?".
+3. **Instalar:** descarga el Setup a `%LOCALAPPDATA%\HistorialPediatrico\updates\` y verifica el SHA-256. Despues respalda la base con la API de SQLite (`database\backups\pre_update_<version>.db`), cierra el programa y ejecuta el Setup en modo silencioso (`/S`). Al terminar, el instalador vuelve a abrir el programa.
+4. **Migraciones:** las aplica `_run_migrations()` al abrir, igual que hoy.
+
+**Cambios necesarios**
+
+| Donde | Cambio |
+|-------|--------|
+| IAM (`historial-backup-writer`) | Agregar `s3:GetObject` sobre `arn:aws:s3:::<bucket>/updates/*`. Solo lectura: la subida la hace el desarrollador con sus propias credenciales. |
+| `scripts/publish_update.py` + `make release` | Construir el instalador, calcular el SHA-256 y subir el `.exe` y `latest.json` |
+| `packaging/windows/launcher.pyw` | Revisar `latest.json`, descargar, verificar, respaldar y lanzar el Setup con `/S` |
+| `packaging/windows/installer.nsi` | En modo silencioso, esperar a que el programa termine de cerrar (hoy aborta si esta abierto) y volver a abrirlo al terminar (`.onInstSuccess` con `IfSilent`) |
+
+**Cuidados**
+
+- Nunca actualizar a media consulta: solo al abrir o al cerrar el programa, y con confirmacion.
+- Si la descarga o el hash fallan, se ignora y se reintenta otro dia. El programa sigue con la version actual, y el error queda en `logs\app.log`. Sin internet pasa lo mismo.
+- Para regresar a una version anterior basta con correr su Setup. Esto funciona mientras las migraciones sean compatibles hacia atras (hoy solo agregan columnas y tablas).
+- Opcional: firmar el instalador para evitar el aviso de SmartScreen.
+
+---
+
+## Empaquetar para Windows (carpeta + run.bat, metodo anterior)
 
 El sistema se empaqueta en una carpeta autocontenida que se copia a cualquier PC con Windows 10/11. El usuario final solo necesita instalar Python 3.14 (no necesita Node.js ni nada mas).
 
