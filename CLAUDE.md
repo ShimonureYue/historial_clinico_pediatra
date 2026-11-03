@@ -11,7 +11,7 @@ Sistema web de historial clinico pediatrico. Migrado de Visual Basic + Access a 
 - **Frontend:** React 19 + Vite 8 + Tailwind CSS 3 + Zustand + TanStack React Query v5 + Tiptap (rich text)
 - **Backend:** Python 3.14+ + FastAPI 0.135 + SQLite 3 (WAL mode)
 - **Auth:** JWT con python-jose, tokens de 24h
-- **Empaquetado:** Build de produccion servido por FastAPI como SPA en Windows
+- **Empaquetado:** Build de produccion servido por FastAPI como SPA en Windows. Distribucion actual: instalador NSIS con Python 3.14 embebido y ventana pywebview (WebView2), ver "Instalador de Windows"
 
 ## Comandos frecuentes
 
@@ -31,6 +31,10 @@ python scripts/migrate_data.py --access /ruta/base.mdb
 
 # Build produccion
 python scripts/build_package.py
+
+# Instalador de Windows (programa de escritorio; requiere brew install makensis)
+make installer
+python packaging/windows/launcher.pyw --smoke-test --data-dir /tmp/hc --db database/historial_pediatrico.db
 ```
 
 ## Arquitectura
@@ -107,6 +111,9 @@ Similares a inmunizaciones pero vinculados a `consultas`. Endpoint bulk `PUT /ap
 ### Plantillas de receta
 CRUD sencillo en `/api/plantillas` (solo requiere `get_current_user`, sin permisos granulares). Cada plantilla guarda `nombre`, `notas_receta`, `notas_adicionales` (HTML del RichTextEditor). Desde `ConsultaDetallePage` se pueden cargar/aplicar a la consulta actual. Item visible en Sidebar para todos los usuarios autenticados (`module: null`).
 
+### Instalador de Windows
+`scripts/build_installer.py` arma `build/HistorialPediatrico-Setup-<version>.exe` desde macOS: Python 3.14 embebido (hash fijado), dependencias de `packaging/windows/requirements-windows.txt` (instaladas con `--no-deps`; debe listar TODAS las transitivas), frontend compilado y `packaging/windows/launcher.pyw`. El lanzador corre uvicorn en un hilo y abre una ventana pywebview; los datos viven en `%LOCALAPPDATA%\HistorialPediatrico` (`DB_PATH` y variables de `config.env` se fijan antes de importar el backend, asi que el backend no sabe que corre empaquetado). `tune_webview2()` corrige defaults de pywebview: ventanas nuevas (`window.open` de la receta PDF) se abren en una ventana de WebView2 en vez de mandarse al navegador, y reactiva clic derecho y Ctrl+P. Ademas se crea la ventana con `text_select=True` y `zoomable=True`. El titulo de la ventana debe coincidir con `APP_NAME` en `installer.nsi` (asi detecta si esta abierto).
+
 ## Convenciones de codigo
 
 ### Backend
@@ -139,6 +146,7 @@ CRUD sencillo en `/api/plantillas` (solo requiere `get_current_user`, sin permis
 - **documentos_consulta** — tabla existe, falta backend router + frontend para subir/ver archivos adjuntos a consultas
 - **auditorias** — tabla existe, falta insertar registros de auditoria en cada operacion CRUD
 - **reportes** — modulo de permisos existe, falta implementar generacion de reportes/impresion
+- **actualizacion remota** — que el programa de escritorio se actualice solo desde S3 (`updates/latest.json` + Setup en modo silencioso). Diseno en README, seccion "Proxima mejora: actualizacion remota"
 
 ## Migracion desde Access
 

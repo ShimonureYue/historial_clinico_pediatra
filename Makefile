@@ -7,6 +7,7 @@
 # Variables sobreescribibles:
 #   make backend PORT=9000          # cambia el puerto del backend
 #   make migrate-access ACCESS=/ruta/base.mdb
+#   make installer VERSION=2026.11.3            # default: fecha de hoy
 # ============================================================
 
 # --- Configuracion ---
@@ -120,6 +121,10 @@ package: venv $(FRONTEND)/node_modules ## Empaqueta todo para Windows (build/His
 build-update: venv $(FRONTEND)/node_modules ## Genera el paquete de actualizacion ligero (build/update/, sin DB)
 	$(PY) scripts/build_update.py
 
+.PHONY: installer
+installer: venv $(FRONTEND)/node_modules ## Instalador de Windows con ventana propia (build/HistorialPediatrico-Setup-*.exe; requiere makensis)
+	$(PY) scripts/build_installer.py $(if $(VERSION),--version $(VERSION))
+
 # ============================================================
 # Calidad / verificacion
 # ============================================================
@@ -129,7 +134,7 @@ lint: $(FRONTEND)/node_modules ## Ejecuta ESLint sobre el frontend
 
 .PHONY: check
 check: venv ## Verifica que el backend y los scripts compilan (py_compile)
-	$(PY) -m py_compile backend/src/*.py backend/src/routers/*.py scripts/*.py
+	$(PY) -m py_compile backend/src/*.py backend/src/routers/*.py scripts/*.py packaging/windows/launcher.pyw
 	@echo "OK: backend y scripts compilan sin errores de sintaxis"
 
 # ============================================================
@@ -140,7 +145,7 @@ clean: ## Borra caches de Python y el build del frontend
 	find . -type d -name __pycache__ -not -path "./.venv/*" -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.py[cod]" -not -path "./.venv/*" -delete 2>/dev/null || true
 	rm -rf $(FRONTEND)/dist
-	rm -rf build/HistorialPediatrico
+	rm -rf build/HistorialPediatrico build/installer
 	@echo "Limpieza completada."
 
 .PHONY: clean-venv
